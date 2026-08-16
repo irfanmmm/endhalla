@@ -8,6 +8,23 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+project 'Endhalla', {
+  'Debug' => :debug,
+  'Release' => :release,
+  'testingDebug' => :debug,
+  'prodDebug' => :debug,
+  'testingRelease' => :release,
+  'prodRelease' => :release,
+  'clientTestingDebug' => :debug,
+  'clientProdDebug' => :debug,
+  'counsellorTestingDebug' => :debug,
+  'counsellorProdDebug' => :debug,
+  'clientTestingRelease' => :release,
+  'clientProdRelease' => :release,
+  'counsellorTestingRelease' => :release,
+  'counsellorProdRelease' => :release,
+}
+
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
@@ -30,5 +47,10 @@ target 'Endhalla' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      end
+    end
   end
 end

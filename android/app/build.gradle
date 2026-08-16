@@ -2,6 +2,12 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+project.ext.envConfigFiles = [
+    staging: ".env.testing",
+    prod: ".env.prod",
+]
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -21,7 +27,7 @@ react {
     //   The list of variants to that are debuggable. For those we're going to
     //   skip the bundling of the JS bundle and the assets. Default is "debug", "debugOptimized".
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
-    // debuggableVariants = ["liteDebug", "liteDebugOptimized", "prodDebug", "prodDebugOptimized"]
+    debuggableVariants = ["clientStagingDebug", "clientProdDebug", "counsellorStagingDebug", "counsellorProdDebug"]
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
@@ -37,7 +43,8 @@ react {
     // bundleAssetName = "MyApplication.android.bundle"
     //
     //   The entry file for bundle generation. Default is 'index.android.js' or 'index.js'
-    // entryFile = file("../js/MyApplication.android.js")
+    def target = System.env.APP_TARGET ?: "client"
+    entryFile = file("../../index.${target}.js")
     //
     //   A list of extra flags to pass to the 'bundle' commands.
     //   See https://github.com/react-native-community/cli/blob/main/docs/commands.md#bundle
@@ -84,6 +91,29 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+    }
+
+    flavorDimensions "app", "env"
+    productFlavors {
+        client {
+            dimension "app"
+            resValue "string", "app_name", "Endhalla"
+            applicationIdSuffix ".client"
+        }
+        counsellor {
+            dimension "app"
+            resValue "string", "app_name", "Endhalla Counsellor"
+            applicationIdSuffix ".counsellor"
+        }
+        prod {
+            dimension "env"
+            resValue "string", "build_config_package", "com.endhalla"
+        }
+        staging {
+            dimension "env"
+            applicationIdSuffix ".testing"
+            resValue "string", "build_config_package", "com.endhalla"
+        }
     }
     signingConfigs {
         debug {

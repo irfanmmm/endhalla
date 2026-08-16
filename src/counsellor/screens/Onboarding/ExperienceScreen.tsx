@@ -1,0 +1,135 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { px } from '../../../shared/utils/responsive';
+import { colors, fonts } from '../../theme';
+import ArrowLeftIcon from '../../../shared/assets/icons/back-icon.svg';
+import ProgressBar from '../../../shared/components/ProgressBar';
+import CustomButton from '../../../shared/components/CustomButton';
+
+const CheckIcon = ({ color }: { color: string }) => (
+  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: color, justifyContent: 'center', alignItems: 'center' }}>
+    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: 'bold' }}>✓</Text>
+  </View>
+);
+
+export default function ExperienceScreen({ navigation }: any) {
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const options = [
+    'Less than 1 year',
+    '1 – 2 years',
+    '3 – 5 years',
+    '6 – 10 years',
+    '10+ years',
+  ];
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.header}>
+          <ProgressBar progress={0.5} />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <ArrowLeftIcon width={px(22)} height={px(22)} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.content}>
+          <Text style={styles.title}>Years of experience</Text>
+          <Text style={styles.subtitle}>This determines your eligible session rate tier.</Text>
+
+          <View style={styles.optionsContainer}>
+            {options.map((option) => {
+              const isSelected = selected === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                  onPress={() => setSelected(option)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.optionLabel}>{option}</Text>
+                  {isSelected && <CheckIcon color={colors.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <CustomButton 
+            title="Continue" 
+            onPress={() => navigation.navigate('SessionRates')} 
+            disabled={!selected}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: px(24),
+    paddingTop: px(12),
+  },
+  backButton: {
+    width: px(38),
+    height: px(38),
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginBottom: px(16),
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: px(24),
+  },
+  title: {
+    fontSize: px(24),
+    fontFamily: fonts.sans.bold,
+    color: '#1A1A1A',
+    marginBottom: px(8),
+  },
+  subtitle: {
+    fontSize: px(14),
+    color: colors.textSecondary,
+    marginBottom: px(32),
+    fontFamily: fonts.sans.regular,
+  },
+  optionsContainer: {
+    gap: px(12),
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    padding: px(20),
+    borderRadius: px(16),
+    borderWidth: 1.5,
+    borderColor: '#E5E5EA',
+  },
+  optionCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: '#EEF0FF',
+  },
+  optionLabel: {
+    fontSize: px(16),
+    fontFamily: fonts.sans.medium,
+    color: '#1A1A1A',
+  },
+  footer: {
+    paddingHorizontal: px(24),
+    paddingBottom: px(24),
+  },
+});

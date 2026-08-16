@@ -1,0 +1,27 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start:client": "node src/client/server.js",
+    "start:counsellor": "node src/counsellor/server.js",
+    "dev:client": "nodemon src/client/server.js",
+    "dev:counsellor": "nodemon src/counsellor/server.js",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:counsellor\"",
+    "start": "concurrently \"npm run start:client\" \"npm run start:counsellor\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.8.0"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4",
+    "nodemon": "^3.1.14"
+  }
+}
