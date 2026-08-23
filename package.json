@@ -30,8 +30,10 @@
     "react-native-config": "^1.6.1",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-mmkv": "^4.3.2",
+    "react-native-nitro-modules": "^0.36.5",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.26.2",
+    "react-native-sound": "^0.13.0",
     "react-native-svg": "^15.15.5",
     "react-redux": "^9.3.0"
   },

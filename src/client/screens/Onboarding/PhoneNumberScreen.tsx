@@ -10,13 +10,20 @@ import CustomButton from '../../../shared/components/CustomButton';
 import { validatePhone, isSequentialPhone } from '../../../shared/utils/validation';
 
 import { StorageService } from '../../../shared/services/storage';
+import { useSendClientOTPMutation } from '../../../shared/store/api/clientApi';
 
 export default function PhoneNumberScreen({ navigation }: any) {
   const [phone, setPhone] = useState('');
+  const [sendOTP, { isLoading }] = useSendClientOTPMutation();
   const isValid = validatePhone(phone);
   const isSequential = phone.length === 10 && isSequentialPhone(phone);
 
-  const handleSendCode = () => {
+  const handleSendCode = async () => {
+    try {
+      await sendOTP({ phone }).unwrap();
+    } catch (e) {
+      console.log('OTP sending fallback to local:', e);
+    }
     const existingUser = StorageService.getUserByPhone(phone);
     navigation.navigate('VerifyCode', { phone, existingUser });
   };

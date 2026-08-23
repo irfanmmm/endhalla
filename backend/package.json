@@ -8,7 +8,8 @@
     "dev:client": "nodemon src/client/server.js",
     "dev:counsellor": "nodemon src/counsellor/server.js",
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:counsellor\"",
-    "start": "concurrently \"npm run start:client\" \"npm run start:counsellor\""
+    "start": "concurrently \"npm run start:client\" \"npm run start:counsellor\"",
+    "seed": "node src/seed.js"
   },
   "keywords": [],
   "author": "",
@@ -18,7 +19,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.8.0"
+    "mongoose": "^9.8.0",
+    "razorpay": "^2.9.8"
   },
   "devDependencies": {
     "concurrently": "^10.0.4",

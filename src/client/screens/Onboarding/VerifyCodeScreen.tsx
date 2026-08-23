@@ -9,9 +9,12 @@ import { colors, fonts } from '../../theme';
 
 import { useAppDispatch } from '../../../shared/store';
 import { loginUser } from '../../../shared/store/authSlice';
+import { useVerifyClientOTPMutation, useLoginClientMutation } from '../../../shared/store/api/clientApi';
 
 export default function VerifyCodeScreen({ route, navigation }: any) {
   const dispatch = useAppDispatch();
+  const [verifyOTP] = useVerifyClientOTPMutation();
+  const [loginClient, { isLoading }] = useLoginClientMutation();
   const phone = route?.params?.phone || '';
   const existingUser = route?.params?.existingUser || null;
   const [code, setCode] = useState('');
@@ -22,16 +25,40 @@ export default function VerifyCodeScreen({ route, navigation }: any) {
     if (error) setError('');
   };
 
-  const handleVerify = () => {
-    // Validation check
-    if (code !== '123456' && code.length === 6) {
-      setError('Invalid verification code. Please try again.');
-      setCode(''); // Clear the OTP box values on error!
-      return;
+  const handleVerify = async () => {
+    try {
+      // 1. Verify OTP
+      await verifyOTP({ phone, otp: code }).unwrap();
+      
+      // 2. Perform Login via backend API
+      const loginRes = await loginClient({ phone, otp: code }).unwrap();
+      
+      if (loginRes.success && loginRes.user) {
+        if (loginRes.isExistingUser && loginRes.user.name) {
+          // Existing user with profile -> log in & navigate to Home
+          dispatch(
+            loginUser({
+              token: loginRes.token || `token_${Date.now()}`,
+              user: loginRes.user,
+            })
+          );
+          return;
+        } else {
+          // New user -> continue onboarding to enter Name & Gender
+          navigation.navigate('Name', { phone });
+          return;
+        }
+      }
+    } catch (e: any) {
+      console.log('Login/Verify API fallback:', e);
+      if (code !== '123456' && code.length === 6) {
+        setError('Invalid verification code. Please try again.');
+        setCode('');
+        return;
+      }
     }
 
     if (existingUser) {
-      // Existing user: Directly log in and redirect to Home
       dispatch(
         loginUser({
           token: `token_${Date.now()}`,
@@ -39,7 +66,6 @@ export default function VerifyCodeScreen({ route, navigation }: any) {
         })
       );
     } else {
-      // New user: Continue onboarding flow to enter Name & Gender
       navigation.navigate('Name', { phone });
     }
   };

@@ -1,184 +1,356 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import { px } from '../../../shared/utils/responsive';
 import { colors, fonts } from '../../theme';
-import WhiteArrowIcon from '../../../shared/assets/icons/whiteArrow.svg';
 import BellIcon from '../../../shared/assets/icons/bell.svg';
 import SearchIcon from '../../../shared/assets/icons/search.svg';
-import BookIcon from '../../../shared/assets/icons/book.svg';
 import WaveformSVG from '../../../shared/assets/icons/waveform.svg';
-import ClockIcon from '../../../shared/assets/icons/clock.svg';
-import HomeIcon from '../../../shared/assets/icons/home.svg';
-import ChatIcon from '../../../shared/assets/icons/chat.svg';
-import ProfileIcon from '../../../shared/assets/icons/profile.svg';
 import PlayIcon from '../../../shared/assets/icons/play.svg';
 import StarIcon from '../../../shared/assets/icons/star.svg';
 import { useAppSelector } from '../../../shared/store';
+import { useGetCounsellorsQuery, CounsellorItem } from '../../../shared/store/api/clientApi';
+import { CounsellorCardSkeleton } from '../../../shared/components/SkeletonCard';
+import { playAudio, stopAudio } from '../../../shared/utils/soundPlayer';
+
+// Pause Icon
+const PauseIcon = ({ width = 12, height = 12, fill = '#FFFFFF' }) => (
+  <Svg width={width} height={height} viewBox="0 0 24 24" fill={fill}>
+    <Path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+  </Svg>
+);
 
 export default function HomeScreen({ navigation }: any) {
   const user = useAppSelector((state) => state.auth.user);
   const userName = user?.name || 'Sara';
+  const bookingState = useAppSelector((state) => state.booking);
+  const confirmedBookings = bookingState?.confirmedBookings || [];
+  const latestBooking = bookingState?.latestConfirmedBooking || (confirmedBookings.length > 0 ? confirmedBookings[0] : null);
+
+  const freeSessionsUsed = confirmedBookings.filter((b) => b.price === 'Free').length;
+  const remainingFree = Math.max(0, 2 - freeSessionsUsed);
+
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch real backend counsellors
+  const { data: counsellorsResponse, refetch, isFetching, isLoading } = useGetCounsellorsQuery();
+  const counsellors: CounsellorItem[] = counsellorsResponse?.data || [];
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (e) {
+      console.log('Refresh error:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+
+  const togglePlay = (id: string, audioUrl?: string) => {
+    if (playingId === id) {
+      stopAudio();
+      setPlayingId(null);
+    } else {
+      setPlayingId(id);
+      const urlToPlay = audioUrl || '/public/sample_voicenote.mp3';
+      playAudio(
+        urlToPlay,
+        () => setPlayingId(null),
+        () => setPlayingId(null)
+      );
+    }
+  };
+
+  const showSkeleton = isLoading || (isFetching && counsellors.length === 0);
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner} showsVerticalScrollIndicator={false}>
-
+        <ScrollView
+          style={styles.scrollContent}
+          contentContainerStyle={styles.scrollInner}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.greetingText}>Good evening</Text>
-              <Text style={styles.nameText}>{userName} 👋</Text>
+              <Text style={styles.welcomeText}>Welcome to Endhalla</Text>
+              <Text style={styles.greetingText}>Hello, {userName} 👋</Text>
             </View>
             <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
               <BellIcon width={px(20)} height={px(20)} />
             </TouchableOpacity>
           </View>
 
-          {/* Upcoming Session */}
-          <View style={styles.upcomingCard}>
-            <Text style={styles.upcomingLabel}>Upcoming session</Text>
-            <Text style={styles.upcomingTitle}>Voice call with Aisha</Text>
-            <Text style={styles.upcomingTime}>Tomorrow, 9:00 AM · 40 min</Text>
-            <TouchableOpacity style={styles.viewDetailsContainer} activeOpacity={0.8}>
-              <View style={styles.viewDetailsBtn}>
-                <Text style={styles.viewDetailsText}>View Details</Text>
+          {/* DYNAMIC TOP SECTION BANNER */}
+          {latestBooking ? (
+            <View style={styles.upcomingBannerCard}>
+              <View style={styles.upcomingTopRow}>
+                <View style={styles.upcomingBadge}>
+                  <Text style={styles.upcomingBadgeText}>📅 UPCOMING SESSION</Text>
+                </View>
+                <View style={styles.livePulseDot} />
               </View>
-              <WhiteArrowIcon width={px(7)} height={px(12)} />
-            </TouchableOpacity>
-          </View>
 
-          {/* Daily Reflection */}
-          <View style={styles.reflectionCard}>
-            <Text style={styles.sectionSmallTitle}>Daily reflection</Text>
-            <Text style={styles.reflectionQuestion}>How are you feeling today?</Text>
-            <View style={styles.emojiRow}>
-              {[
-                { icon: '😔', label: 'Low' },
-                { icon: '😐', label: 'Okay' },
-                { icon: '🙂', label: 'Good' },
-                { icon: '😊', label: 'Great' },
-                { icon: '😌', label: 'Calm' },
-              ].map((item, idx) => (
-                <TouchableOpacity key={idx} style={styles.emojiPill} activeOpacity={0.7}>
-                  <Text style={styles.emojiChar}>{item.icon}</Text>
-                  <Text style={styles.emojiLabel}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
+              <Text style={styles.upcomingTitle}>{latestBooking.sessionType} Session</Text>
+              <Text style={styles.upcomingCounsellor}>with {latestBooking.counsellorName}</Text>
+
+              <View style={styles.upcomingTimePill}>
+                <Text style={styles.upcomingTimeText}>
+                  🗓️ {latestBooking.dateText} · {latestBooking.timeText}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.upcomingJoinBtn}
+                activeOpacity={0.85}
+                onPress={() =>
+                  navigation.navigate('BookingConfirmed', {
+                    counsellorName: latestBooking.counsellorName,
+                    sessionType: latestBooking.sessionType,
+                    dateText: latestBooking.dateText,
+                    timeText: latestBooking.timeText,
+                  })
+                }
+              >
+                <Text style={styles.upcomingJoinBtnText}>View Session Details & Join</Text>
+              </TouchableOpacity>
             </View>
-          </View>
+          ) : (
+            <View style={styles.bannerCard}>
+              <Text style={styles.bannerBadge}>You're new here 🌱</Text>
+              <Text style={styles.bannerTitle}>
+                {freeSessionsUsed > 0 ? 'Your Free Sessions' : 'Start with a free session'}
+              </Text>
+              <Text style={styles.bannerSubtitle}>
+                {remainingFree > 0
+                  ? `You have ${remainingFree} free session${remainingFree > 1 ? 's' : ''} remaining. No payment needed.`
+                  : 'All free sessions used. Book a regular session anytime!'}
+              </Text>
 
-          {/* Quick Support */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Quick support</Text>
-          </View>
-          <View style={styles.quickSupportRow}>
-            <TouchableOpacity
-              style={styles.qsCard}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('Search')}
-            >
-              <SearchIcon width={px(24)} height={px(24)} stroke={colors.primary} />
-              <View style={styles.qsTexts}>
-                <Text style={styles.qsTitle}>Find a Counsellor</Text>
-                <Text style={styles.qsSub}>Browse by expertise</Text>
+              {/* Dual Progress Bars */}
+              <View style={styles.progressRow}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    freeSessionsUsed >= 1 ? styles.progressBarFilled : styles.progressBarEmpty,
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.progressBar,
+                    freeSessionsUsed >= 2 ? styles.progressBarFilled : styles.progressBarEmpty,
+                  ]}
+                />
               </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.qsCard} activeOpacity={0.8}>
-              <BookIcon width={px(24)} height={px(24)} stroke={colors.primary} />
-              <View style={styles.qsTexts}>
-                <Text style={styles.qsTitle}>Mood Journal</Text>
-                <Text style={styles.qsSub}>3 entries this week</Text>
-              </View>
-            </TouchableOpacity>
+              <Text style={styles.progressText}>{freeSessionsUsed}/2 free sessions used</Text>
+            </View>
+          )}
+
+          {/* Section 1: Counsellors reaching out */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionTitle}>Counsellors reaching out to you</Text>
+            <Text style={styles.sectionSubtitle}>They've sent you a personal voice note</Text>
           </View>
 
-          {/* Suggested For You */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Suggested for you</Text>
-            <TouchableOpacity activeOpacity={0.7}><Text style={styles.seeAllText}>See all</Text></TouchableOpacity>
-          </View>
+          {showSkeleton ? (
+            <>
+              <CounsellorCardSkeleton />
+              <CounsellorCardSkeleton />
+              <CounsellorCardSkeleton />
+            </>
+          ) : counsellors.length === 0 ? (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateTitle}>No counsellors found</Text>
+              <Text style={styles.emptyStateSubtitle}>Please pull down to refresh or check back shortly.</Text>
+            </View>
+          ) : (
+            counsellors.map((counsellor) => {
+              const isPlaying = playingId === counsellor._id;
+              const initial = counsellor.fullName?.charAt(0) || 'C';
+              const expLangs = `${counsellor.experienceYears || 1} yrs · ${(counsellor.languages || ['English']).join(', ')}`;
+              const freeOfferText = counsellor.freeSessionDurationText || '40 min · Free';
+              const quoteText = counsellor.voiceNote?.quote || '"Hi! I\'d love to offer you a free session to help you get started on your journey."';
+              const audioDuration = counsellor.voiceNote?.duration || '0:38';
 
-          {/* Render Counsellors */}
-          {[
-            { name: 'Mariam', initial: 'M', exp: '9 yrs · Malayalam', price: '₹1,000', rating: '4.9', tags: ['Anxiety', 'Personal Growth'], next: 'Tomorrow' },
-            { name: 'Rima', initial: 'R', exp: '2 yrs · Malayalam', price: '₹800', rating: '4.6', tags: ['Anxiety', 'Self-esteem'], next: 'Available now', nextHighlight: true },
-            { name: 'Fidha', initial: 'F', exp: '1 yrs · Malayalam', price: '₹600', rating: '4.4', tags: ['Loneliness', 'Mindfulness'], next: 'Available now', nextHighlight: true },
-          ].map((counsellor, idx) => (
-            <TouchableOpacity key={idx} style={styles.counsellorCard} activeOpacity={0.9} onPress={() => navigation.navigate('BookSession', { counsellor })}>
-              <View style={styles.ccTop}>
-                <View style={styles.ccAvatar}><Text style={styles.ccInitial}>{counsellor.initial}</Text></View>
-                <View style={styles.ccInfo}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.ccName}>{counsellor.name}</Text>
-                    <View style={styles.verifiedBadge}>
-                      <Text style={styles.verifiedText}>✓ Verified</Text>
+              return (
+                <View key={counsellor._id} style={styles.counsellorCard}>
+                  {/* Top Meta: Badge & Rating */}
+                  <View style={styles.cardTopMeta}>
+                    {counsellor.hasFreeSessionOffer ? (
+                      <View style={styles.offerBadge}>
+                        <Text style={styles.offerBadgeText}>🎁 Free session offer</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.standardRateBadge}>
+                        <Text style={styles.standardRateBadgeText}>Standard Rates</Text>
+                      </View>
+                    )}
+                    <View style={styles.ratingRow}>
+                      <StarIcon width={px(12)} height={px(12)} fill="#F5A623" stroke="#F5A623" />
+                      <Text style={styles.ratingText}>{counsellor.rating || 4.9}</Text>
                     </View>
                   </View>
-                  <Text style={styles.ccExp}>{counsellor.exp}</Text>
-                </View>
-                <View style={styles.ccRight}>
-                  <Text style={styles.ccPrice}>{counsellor.price}</Text>
-                  <View style={styles.ratingRow}>
-                    <StarIcon width={px(12)} height={px(12)} />
-                    <Text style={styles.ccRating}>{counsellor.rating}</Text>
+
+                  {/* Avatar + Info */}
+                  <View style={styles.counsellorProfileRow}>
+                    {counsellor.avatar ? (
+                      <Image source={{ uri: counsellor.avatar }} style={styles.avatarImage} />
+                    ) : (
+                      <View style={styles.avatarCircle}>
+                        <Text style={styles.avatarText}>{initial}</Text>
+                      </View>
+                    )}
+                    <View style={styles.profileDetails}>
+                      <Text style={styles.counsellorName}>{counsellor.fullName}</Text>
+                      <Text style={styles.counsellorSubText}>{expLangs}</Text>
+                    </View>
+                  </View>
+
+                  {/* Voice Note Player */}
+                  <View style={[styles.audioPlayerBox, isPlaying && styles.audioPlayerBoxActive]}>
+                    <TouchableOpacity
+                      style={[styles.playBtn, isPlaying && styles.playBtnActive]}
+                      activeOpacity={0.8}
+                      onPress={() => togglePlay(counsellor._id, counsellor.voiceNote?.audioUrl)}
+                    >
+                      {isPlaying ? (
+                        <PauseIcon width={px(12)} height={px(12)} fill="#FFFFFF" />
+                      ) : (
+                        <PlayIcon width={px(12)} height={px(12)} fill="#FFFFFF" stroke="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                    <View style={styles.waveformContainer}>
+                      <WaveformSVG width={px(130)} height={px(16)} stroke={isPlaying ? '#4A684F' : colors.primary} />
+                    </View>
+                    <Text style={[styles.audioTimeText, isPlaying && styles.audioTimeActive]}>{audioDuration}</Text>
+                  </View>
+
+                  {/* Quote */}
+                  <Text style={styles.quoteText}>{quoteText}</Text>
+
+                  {/* Tags Row */}
+                  <View style={styles.tagsContainer}>
+                    {counsellor.areasOfFocus?.slice(0, 2).map((tag: string, idx: number) => (
+                      <View key={idx} style={styles.tagPill}>
+                        <Text style={styles.tagPillText}>{tag}</Text>
+                      </View>
+                    ))}
+                    {counsellor.hasFreeSessionOffer ? (
+                      <View style={styles.freeHighlightTagPill}>
+                        <Text style={styles.freeHighlightTagText}>{freeOfferText}</Text>
+                      </View>
+                    ) : (
+                      <View style={[styles.tagPill, { backgroundColor: '#F4F7FB' }]}>
+                        <Text style={[styles.tagPillText, { color: colors.primary, fontFamily: fonts.sans.bold }]}>
+                          ₹{counsellor.rates?.chat || 499} / session
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Action Buttons */}
+                  <View style={styles.actionButtonsRow}>
+                    <TouchableOpacity
+                      style={styles.acceptBtn}
+                      activeOpacity={0.8}
+                      onPress={() =>
+                        navigation.navigate('BookSession', {
+                          counsellor,
+                          isFreeOffer: counsellor.hasFreeSessionOffer ?? false,
+                        })
+                      }
+                    >
+                      <Text style={styles.acceptBtnText}>
+                        {counsellor.hasFreeSessionOffer
+                          ? 'Accept & Pick a Slot'
+                          : `Book Session (₹${counsellor.rates?.chat || 499})`}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.declineBtn} activeOpacity={0.8}>
+                      <Text style={styles.declineBtnText}>Decline</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
-              </View>
+              );
+            })
+          )}
 
-              <View style={styles.audioPlayer}>
-                <TouchableOpacity style={styles.playBtn} activeOpacity={0.8}>
-                  <PlayIcon width={px(12)} height={px(12)} fill="#FFFFFF" stroke="#FFFFFF" />
-                </TouchableOpacity>
-                <View style={{ flex: 1, paddingHorizontal: 12 }}>
-                  <WaveformSVG width={px(140)} height={px(16)} stroke={colors.primary} />
-                </View>
-                <Text style={styles.audioTime}>0:42</Text>
-              </View>
-
-              <View style={styles.ccBottom}>
-                <View style={styles.tagsRow}>
-                  {counsellor.tags.map((t, i) => (
-                    <View key={i} style={styles.tagPill}><Text style={styles.tagText}>{t}</Text></View>
-                  ))}
-                </View>
-                <View style={styles.nextInfoRow}>
-                  <View style={styles.nextInfo}>
-                    <ClockIcon width={px(12)} height={px(12)} />
-                    <Text style={[styles.nextText, counsellor.nextHighlight && { color: colors.primary }]}>
-                      {counsellor.nextHighlight ? counsellor.next : `Next: ${counsellor.next}`}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-
-          {/* Recent Conversations */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Recent conversations</Text>
-            <TouchableOpacity activeOpacity={0.7}><Text style={styles.seeAllText}>See all</Text></TouchableOpacity>
+          {/* Section 2: Explore counsellors */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionTitle}>Explore counsellors</Text>
           </View>
 
-          <TouchableOpacity style={styles.chatCard} activeOpacity={0.8}>
-            <View style={styles.chatAvatar}>
-              <ChatIcon width={px(24)} height={px(24)} />
+          <TouchableOpacity
+            style={styles.exploreCard}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Search')}
+          >
+            <View style={styles.exploreIconCircle}>
+              <SearchIcon width={px(20)} height={px(20)} stroke={colors.primary} />
             </View>
-            <View style={styles.chatInfo}>
-              <Text style={styles.chatName}>Aisha</Text>
-              <Text style={styles.chatMsg} numberOfLines={1}>That's completely valid — let's w...</Text>
+            <View style={styles.exploreTextContainer}>
+              <Text style={styles.exploreTitle}>Browse all counsellors</Text>
+              <Text style={styles.exploreSubtitle}>Find the right match for you</Text>
             </View>
-            <View style={styles.chatRight}>
-              <Text style={styles.chatTime}>2h ago</Text>
-              <View style={styles.unreadBadge}><Text style={styles.unreadText}>2</Text></View>
-            </View>
+            <Text style={styles.chevronArrow}>›</Text>
           </TouchableOpacity>
 
-          <View style={{ height: 40 }} />
+          {/* Section 3: What to expect */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionTitle}>What to expect</Text>
+          </View>
+
+          <View style={styles.expectCardList}>
+            {/* Feature 1 */}
+            <View style={styles.expectCard}>
+              <Text style={styles.expectEmoji}>🔒</Text>
+              <View style={styles.expectTextContainer}>
+                <Text style={styles.expectTitle}>100% private</Text>
+                <Text style={styles.expectSubtitle}>
+                  Your conversations are fully encrypted and confidential.
+                </Text>
+              </View>
+            </View>
+
+            {/* Feature 2 */}
+            <View style={styles.expectCard}>
+              <Text style={styles.expectEmoji}>🗣️</Text>
+              <View style={styles.expectTextContainer}>
+                <Text style={styles.expectTitle}>Your format, your choice</Text>
+                <Text style={styles.expectSubtitle}>
+                  Chat, voice, or video — whatever feels right.
+                </Text>
+              </View>
+            </View>
+
+            {/* Feature 3 */}
+            <View style={styles.expectCard}>
+              <Text style={styles.expectEmoji}>💚</Text>
+              <View style={styles.expectTextContainer}>
+                <Text style={styles.expectTitle}>No judgement</Text>
+                <Text style={styles.expectSubtitle}>
+                  A safe space to express anything on your mind.
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={{ height: px(40) }} />
         </ScrollView>
       </SafeAreaView>
-
     </View>
   );
 }
@@ -186,280 +358,306 @@ export default function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F8F7F3', // Light off-white background matching UI design
   },
   scrollContent: {
     flex: 1,
   },
   scrollInner: {
     paddingHorizontal: px(20),
-    paddingTop: px(24),
+    paddingTop: px(16),
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: px(24),
+    marginBottom: px(20),
+  },
+  welcomeText: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.regular,
+    color: '#8A8A8A',
+    marginBottom: px(2),
   },
   greetingText: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
-    marginBottom: px(4),
-  },
-  nameText: {
-    fontSize: px(20),
-    fontFamily: fonts.sans.medium,
-    color: colors.black,
+    fontSize: px(22),
+    fontFamily: fonts.sans.bold,
+    color: '#1A1A1A',
   },
   bellBtn: {
     width: px(40),
     height: px(40),
-    borderRadius: px(16),
-    backgroundColor: colors.white,
+    borderRadius: px(20),
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E8E6DF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  upcomingCard: {
-    backgroundColor: colors.primary, // Green for Client app
+  bannerCard: {
+    backgroundColor: colors.primary, // Sage Green matching design
     borderRadius: px(20),
     padding: px(20),
     marginBottom: px(24),
   },
-  upcomingLabel: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.regular,
-    color: colors.white,
+  bannerBadge: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.medium,
+    color: '#E2EBE4',
     marginBottom: px(8),
   },
-  upcomingTitle: {
-    fontSize: px(14),
-    fontFamily: fonts.sans.medium,
-    color: colors.white,
-    marginBottom: px(4),
-  },
-  upcomingTime: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.regular,
-    color: colors.white,
-    marginBottom: px(20),
-  },
-  viewDetailsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: px(8),
-  },
-  viewDetailsBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: px(16),
-    paddingVertical: px(8),
-    borderRadius: px(20),
-  },
-  viewDetailsText: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.medium,
-    color: colors.white,
-  },
-  viewDetailsArrow: {
-    fontSize: px(18),
-    fontFamily: fonts.sans.medium,
-    color: colors.white,
-  },
-  reflectionCard: {
-    backgroundColor: colors.white,
-    borderRadius: px(28),
-    padding: px(16),
-    marginBottom: px(24),
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionSmallTitle: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
-    marginBottom: px(4),
-  },
-  reflectionQuestion: {
-    fontSize: px(14),
-    fontFamily: fonts.sans.medium,
-    color: colors.black,
-    marginBottom: px(18),
-  },
-  emojiRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: px(8),
-  },
-  emojiPill: {
-    flex: 1,
-    backgroundColor: '#F7F5F0',
-    borderRadius: px(24),
-    paddingVertical: px(16),
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: px(10),
-  },
-  emojiChar: {
-    fontSize: px(18),
-  },
-  emojiLabel: {
-    fontSize: px(10),
-    fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
-  },
-  sectionHeader: {
-    marginBottom: px(16),
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: px(16),
-    marginTop: px(8),
-  },
-  sectionTitle: {
-    fontSize: px(14),
-    fontFamily: fonts.sans.medium,
-    color: colors.black,
-  },
-  seeAllText: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.medium,
-    color: colors.primary,
-  },
-  quickSupportRow: {
-    flexDirection: 'row',
-    gap: px(16),
-    marginBottom: px(24),
-  },
-  qsCard: {
-    flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: px(24),
-    padding: px(16),
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  qsTexts: {
-    marginTop: px(16),
-  },
-  qsTitle: {
-    fontSize: px(14),
-    fontFamily: fonts.sans.medium,
-    color: colors.black,
-    marginBottom: px(4),
-  },
-  qsSub: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.medium,
-    color: colors.textSecondary,
-  },
-  counsellorCard: {
-    backgroundColor: colors.white,
-    borderRadius: px(20),
-    padding: px(16),
-    marginBottom: px(16),
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  ccTop: {
-    flexDirection: 'row',
-    marginBottom: px(16),
-  },
-  ccAvatar: {
-    width: px(48),
-    height: px(48),
-    borderRadius: px(16),
-    backgroundColor: '#EEF5F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: px(12),
-  },
-  ccInitial: {
+  bannerTitle: {
     fontSize: px(20),
-    fontFamily: fonts.sans.medium,
-    color: colors.primary,
+    fontFamily: fonts.sans.bold,
+    color: '#FFFFFF',
+    marginBottom: px(6),
   },
-  ccInfo: {
-    flex: 1,
-    justifyContent: 'center',
+  bannerSubtitle: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.regular,
+    color: 'rgba(255, 255, 255, 0.95)',
+    lineHeight: px(20), // Fixed line-height overflow clipping
+    marginBottom: px(16),
   },
-  ccName: {
-    fontSize: px(16),
-    fontFamily: fonts.sans.medium,
-    color: colors.black,
-    marginRight: px(8),
+  upcomingBannerCard: {
+    backgroundColor: '#072654', // Dark Navy Accent matching design
+    borderRadius: px(20),
+    padding: px(20),
+    marginBottom: px(24),
   },
-  verifiedBadge: {
-    backgroundColor: '#EEF5F0',
-    paddingHorizontal: px(6),
-    paddingVertical: px(2),
+  upcomingTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: px(8),
+  },
+  upcomingBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: px(10),
+    paddingVertical: px(4),
     borderRadius: px(10),
   },
-  verifiedText: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.regular,
-    color: colors.primary,
+  upcomingBadgeText: {
+    fontSize: px(10),
+    fontFamily: fonts.sans.bold,
+    color: '#00C9A7',
+    letterSpacing: 0.5,
   },
-  ccExp: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
+  livePulseDot: {
+    width: px(8),
+    height: px(8),
+    borderRadius: px(4),
+    backgroundColor: '#00C9A7',
+  },
+  upcomingTitle: {
+    fontSize: px(20),
+    fontFamily: fonts.sans.bold,
+    color: '#FFFFFF',
     marginTop: px(4),
   },
-  ccRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
+  upcomingCounsellor: {
+    fontSize: px(14),
+    fontFamily: fonts.sans.medium,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginBottom: px(12),
   },
-  ccPrice: {
+  upcomingTimePill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: px(12),
+    paddingVertical: px(8),
+    borderRadius: px(12),
+    alignSelf: 'flex-start',
+    marginBottom: px(16),
+  },
+  upcomingTimeText: {
     fontSize: px(12),
     fontFamily: fonts.sans.medium,
-    color: colors.black,
+    color: '#FFFFFF',
+  },
+  upcomingJoinBtn: {
+    backgroundColor: colors.primary,
+    height: px(44),
+    borderRadius: px(14),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  upcomingJoinBtnText: {
+    color: '#FFFFFF',
+    fontSize: px(13),
+    fontFamily: fonts.sans.bold,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    gap: px(8),
+    marginBottom: px(8),
+  },
+  progressBar: {
+    flex: 1,
+    height: px(6),
+    borderRadius: px(3),
+  },
+  progressBarFilled: {
+    backgroundColor: '#FFFFFF',
+  },
+  progressBarEmpty: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  progressText: {
+    fontSize: px(12),
+    fontFamily: fonts.sans.regular,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  sectionHeaderContainer: {
+    marginBottom: px(14),
+  },
+  sectionTitle: {
+    fontSize: px(16),
+    fontFamily: fonts.sans.bold,
+    color: '#1A1A1A',
+    marginBottom: px(2),
+  },
+  sectionSubtitle: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.regular,
+    color: '#8A8A8A',
+  },
+  counsellorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: px(24),
+    padding: px(18),
+    marginBottom: px(20),
+    borderWidth: 1,
+    borderColor: '#E8E6DF',
+  },
+  cardTopMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: px(14),
+  },
+  offerBadge: {
+    backgroundColor: '#F5F2EA',
+    paddingHorizontal: px(12),
+    paddingVertical: px(5),
+    borderRadius: px(12),
+  },
+  offerBadgeText: {
+    fontSize: px(12),
+    fontFamily: fonts.sans.medium,
+    color: colors.primary,
+  },
+  standardRateBadge: {
+    backgroundColor: '#F0F4F8',
+    paddingHorizontal: px(12),
+    paddingVertical: px(5),
+    borderRadius: px(12),
+  },
+  standardRateBadgeText: {
+    fontSize: px(11),
+    fontFamily: fonts.sans.medium,
+    color: colors.textSecondary,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: px(4),
-    marginTop: px(4),
   },
-  ccRating: {
-    fontSize: px(12),
-    fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
+  ratingText: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.medium,
+    color: '#1A1A1A',
   },
-  audioPlayer: {
+  counsellorProfileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    marginBottom: px(14),
+  },
+  avatarCircle: {
+    width: px(48),
+    height: px(48),
     borderRadius: px(16),
-    padding: px(8),
-    marginBottom: px(16),
+    backgroundColor: '#EAEFEA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: px(12),
+  },
+  avatarImage: {
+    width: px(48),
+    height: px(48),
+    borderRadius: px(16),
+    marginRight: px(12),
+  },
+  avatarText: {
+    fontSize: px(20),
+    fontFamily: fonts.sans.bold,
+    color: colors.primary,
+  },
+  profileDetails: {
+    flex: 1,
+  },
+  counsellorName: {
+    fontSize: px(17),
+    fontFamily: fonts.sans.bold,
+    color: '#1A1A1A',
+    marginBottom: px(2),
+  },
+  counsellorSubText: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.regular,
+    color: '#8A8A8A',
+  },
+  audioPlayerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F5F0',
+    borderRadius: px(16),
+    paddingHorizontal: px(12),
+    paddingVertical: px(10),
+    marginBottom: px(14),
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  audioPlayerBoxActive: {
+    backgroundColor: '#EEF4EF',
+    borderColor: '#D4E4D7',
   },
   playBtn: {
-    width: px(32),
-    height: px(32),
-    borderRadius: px(16),
+    width: px(34),
+    height: px(34),
+    borderRadius: px(17),
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  audioTime: {
+  playBtnActive: {
+    backgroundColor: '#4A684F',
+  },
+  waveformContainer: {
+    flex: 1,
+    paddingHorizontal: px(12),
+  },
+  audioTimeText: {
     fontSize: px(12),
     fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
-    marginRight: px(8),
+    color: '#8A8A8A',
   },
-  ccBottom: {
-    flexDirection: 'column',
-    gap: px(10),
+  audioTimeActive: {
+    color: colors.primary,
+    fontFamily: fonts.sans.medium,
   },
-  tagsRow: {
+  quoteText: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.regular,
+    fontStyle: 'italic',
+    color: '#555555',
+    lineHeight: px(20),
+    marginBottom: px(14),
+  },
+  tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: px(8),
+    marginBottom: px(18),
   },
   tagPill: {
     backgroundColor: '#F0EDE7',
@@ -467,109 +665,142 @@ const styles = StyleSheet.create({
     paddingVertical: px(6),
     borderRadius: px(12),
   },
-  tagText: {
+  tagPillText: {
     fontSize: px(12),
     fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
+    color: '#666666',
   },
-  nextInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
+  freeHighlightTagPill: {
+    backgroundColor: '#E5EFE7',
+    paddingHorizontal: px(12),
+    paddingVertical: px(6),
+    borderRadius: px(12),
   },
-  nextInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: px(4),
-  },
-  nextText: {
+  freeHighlightTagText: {
     fontSize: px(12),
-    fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
+    fontFamily: fonts.sans.medium,
+    color: colors.primary,
   },
-  chatCard: {
-    backgroundColor: colors.white,
-    borderRadius: px(24),
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: px(10),
+  },
+  acceptBtn: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    height: px(46),
+    borderRadius: px(14),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  acceptBtnText: {
+    color: '#FFFFFF',
+    fontSize: px(14),
+    fontFamily: fonts.sans.bold,
+  },
+  declineBtn: {
+    backgroundColor: '#F5F2EA',
+    paddingHorizontal: px(20),
+    height: px(46),
+    borderRadius: px(14),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  declineBtnText: {
+    color: '#777777',
+    fontSize: px(14),
+    fontFamily: fonts.sans.medium,
+  },
+  exploreCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: px(20),
     padding: px(16),
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: px(16),
+    marginBottom: px(24),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E8E6DF',
   },
-  chatAvatar: {
-    width: px(48),
-    height: px(48),
-    borderRadius: px(24),
-    backgroundColor: '#EEF5F0',
+  exploreIconCircle: {
+    width: px(44),
+    height: px(44),
+    borderRadius: px(22),
+    backgroundColor: '#EAEFEA',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: px(12),
+    marginRight: px(14),
   },
-  chatInitial: {
-    fontSize: px(18),
-    fontFamily: fonts.sans.bold,
-    color: colors.primary,
-  },
-  chatInfo: {
+  exploreTextContainer: {
     flex: 1,
   },
-  chatName: {
-    fontSize: px(14),
-    fontFamily: fonts.sans.medium,
-    color: colors.black,
-    marginBottom: px(4),
+  exploreTitle: {
+    fontSize: px(15),
+    fontFamily: fonts.sans.bold,
+    color: '#1A1A1A',
+    marginBottom: px(2),
   },
-  chatMsg: {
-    fontSize: px(12),
+  exploreSubtitle: {
+    fontSize: px(13),
     fontFamily: fonts.sans.regular,
-    color: colors.black,
+    color: '#8A8A8A',
   },
-  chatRight: {
-    alignItems: 'flex-end',
-  },
-  chatTime: {
-    fontSize: px(12),
+  chevronArrow: {
+    fontSize: px(22),
+    color: '#C0C0C0',
     fontFamily: fonts.sans.regular,
-    color: colors.textSecondary,
+  },
+  expectCardList: {
+    gap: px(12),
+    marginBottom: px(16),
+  },
+  expectCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: px(20),
+    padding: px(16),
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E8E6DF',
+  },
+  expectEmoji: {
+    fontSize: px(24),
+    marginRight: px(14),
+  },
+  expectTextContainer: {
+    flex: 1,
+  },
+  expectTitle: {
+    fontSize: px(15),
+    fontFamily: fonts.sans.bold,
+    color: '#1A1A1A',
+    marginBottom: px(2),
+  },
+  expectSubtitle: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.regular,
+    color: '#777777',
+    lineHeight: px(18),
+  },
+  emptyStateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: px(20),
+    padding: px(24),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: px(20),
+    borderWidth: 1,
+    borderColor: '#E8E6DF',
+  },
+  emptyStateTitle: {
+    fontSize: px(16),
+    fontFamily: fonts.sans.bold,
+    color: '#1A1A1A',
     marginBottom: px(6),
   },
-  unreadBadge: {
-    width: px(20),
-    height: px(20),
-    borderRadius: px(10),
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+  emptyStateSubtitle: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.regular,
+    color: '#777777',
+    textAlign: 'center',
   },
-  unreadText: {
-    fontSize: px(10),
-    fontFamily: fonts.sans.bold,
-    color: colors.white,
-  },
-  bottomBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    paddingVertical: px(12),
-    paddingHorizontal: px(20),
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    paddingBottom: Platform.OS === 'ios' ? px(24) : px(12),
-  },
-  tabItemActive: {
-    flexDirection: 'row',
-    backgroundColor: colors.primary,
-    paddingHorizontal: px(16),
-    paddingVertical: px(10),
-    borderRadius: px(24),
-    alignItems: 'center',
-    gap: px(8),
-  },
-  tabTextActive: {
-    color: colors.white,
-    fontFamily: fonts.sans.bold,
-    fontSize: px(14),
-  }
 });

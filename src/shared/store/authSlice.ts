@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { StorageService, UserSession } from '../services/storage';
+import { clientApi } from './api/clientApi';
+import { counsellorApi } from './api/counsellorApi';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -42,8 +44,10 @@ export const loginUser = createAsyncThunk(
  */
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
-  async () => {
-    await StorageService.clearSession();
+  async (_, { dispatch }) => {
+    StorageService.clearSession();
+    dispatch(clientApi.util.resetApiState());
+    dispatch(counsellorApi.util.resetApiState());
   }
 );
 
@@ -55,6 +59,11 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.user = action.payload.user;
       state.token = action.payload.token;
+    },
+    logout(state) {
+      state.isAuthenticated = false;
+      state.user = null;
+      state.token = null;
     },
   },
   extraReducers: (builder) => {
@@ -88,7 +97,17 @@ const authSlice = createSlice({
       })
 
       // logoutUser
+      .addCase(logoutUser.pending, (state) => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+      })
       .addCase(logoutUser.fulfilled, (state) => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+      })
+      .addCase(logoutUser.rejected, (state) => {
         state.isAuthenticated = false;
         state.user = null;
         state.token = null;
@@ -96,5 +115,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setAuthenticated } = authSlice.actions;
+export const { setAuthenticated, logout } = authSlice.actions;
 export default authSlice.reducer;

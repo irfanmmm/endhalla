@@ -37,7 +37,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator key={isAuthenticated ? 'user-authenticated' : 'user-guest'} screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           <>
             <Stack.Screen name="Main" component={MainTabNavigator} />
@@ -52,9 +52,6 @@ export default function AppNavigator() {
             <Stack.Screen name="Name" component={NameScreen} />
             <Stack.Screen name="Gender" component={GenderScreen} />
             <Stack.Screen name="Success" component={SuccessScreen} />
-            <Stack.Screen name="Main" component={MainTabNavigator} />
-            <Stack.Screen name="BookSession" component={BookSessionScreen} />
-            <Stack.Screen name="BookingConfirmed" component={BookingConfirmedScreen} />
           </>
         )}
       </Stack.Navigator>

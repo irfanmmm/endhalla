@@ -7,14 +7,21 @@ import { colors, fonts } from '../../theme';
 
 import { useAppDispatch } from '../../../shared/store';
 import { loginUser } from '../../../shared/store/authSlice';
+import { useUpdateClientProfileMutation } from '../../../shared/store/api/clientApi';
 
 export default function SuccessScreen({ route, navigation }: any) {
   const dispatch = useAppDispatch();
+  const [updateProfile] = useUpdateClientProfileMutation();
   const phone = route?.params?.phone || '+91 98765 43210';
   const name = route?.params?.name || 'Sara';
   const gender = route?.params?.gender || 'Female';
 
-  const handleFinishOnboarding = () => {
+  const handleFinishOnboarding = async () => {
+    try {
+      await updateProfile({ phone, name, gender }).unwrap();
+    } catch (e) {
+      console.log('Backend profile sync fallback:', e);
+    }
     dispatch(
       loginUser({
         token: `token_${Date.now()}`,

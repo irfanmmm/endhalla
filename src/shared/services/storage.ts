@@ -61,6 +61,7 @@ export interface BookingRecord {
   dateText: string;
   timeText: string;
   price: string;
+  status?: string;
   createdAt: string;
 }
 
@@ -108,7 +109,7 @@ export const StorageService = {
    * Delete item
    */
   remove(key: string): void {
-    mmkvInstance.delete(key);
+    (mmkvInstance as any).delete(key);
   },
 
   // --- Registered Users Registry ---

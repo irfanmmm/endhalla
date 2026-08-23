@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { px } from '../../../shared/utils/responsive';
 import { colors, fonts, borderRadius } from '../../theme';
@@ -12,19 +12,72 @@ import ClockIcon from '../../../shared/assets/icons/clock.svg';
 import PlayIcon from '../../../shared/assets/icons/play.svg';
 import StarIcon from '../../../shared/assets/icons/star.svg';
 
+import { useGetCounsellorsQuery, CounsellorItem } from '../../../shared/store/api/clientApi';
+import { CounsellorCardSkeleton } from '../../../shared/components/SkeletonCard';
+import { playAudio, stopAudio } from '../../../shared/utils/soundPlayer';
+
 export default function SearchScreen({ navigation }: any) {
   const [selectedFilter, setSelectedFilter] = useState('All');
+  const [refreshing, setRefreshing] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const { data: apiData, refetch, isFetching, isLoading } = useGetCounsellorsQuery({
+    category: selectedFilter !== 'All' && selectedFilter !== 'Free Session' ? selectedFilter : undefined,
+  });
 
-  const filters = ['All', 'Anxiety', 'Relationships', 'Family', 'Trauma'];
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (e) {
+      console.log('Search refresh error:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
-  const counsellors = [
-    { name: 'Aisha', initial: 'A', verified: true, exp: '5 yrs experience', langs: 'Malayalam, English', price: '₹1,000', rating: '4.9 (120 reviews)', next: 'Available today', tags: ['Anxiety', 'Relationships', 'Trauma'] },
-    { name: 'Rima', initial: 'R', verified: true, exp: '2 yrs experience', langs: 'Malayalam, English', price: '₹800', rating: '4.6 (87 reviews)', next: 'Available today', tags: ['Family', 'Anxiety', 'Self-Esteem'] },
-    { name: 'Mariam', initial: 'M', verified: true, exp: '9 yrs experience', langs: 'Malayalam, English, Arabic', price: '₹1,500', rating: '5.0 (200 reviews)', next: 'Next: Tomorrow', tags: ['Personal Growth', 'Depression'] },
-    { name: 'Fidha', initial: 'F', verified: true, exp: '1 yrs experience', langs: 'Malayalam, English, Hindi', price: '₹600', rating: '4.4 (54 reviews)', next: 'Available today', tags: ['Loneliness', 'Mindfulness', 'Stress'] },
-    { name: 'Sanjay', initial: 'S', verified: true, exp: '4 yrs experience', langs: 'Malayalam, English', price: '₹1,200', rating: '4.8 (102 reviews)', next: 'Next: Tomorrow', tags: ['ADHD', 'Career', 'Stress'] },
-    { name: 'Nora', initial: 'N', verified: true, exp: '3 yrs experience', langs: 'Malayalam, English, French', price: '₹900', rating: '4.7 (110 reviews)', next: 'Available today', tags: ['Trauma', 'Grief'] }
-  ];
+  const togglePlay = (id: string, audioUrl?: string) => {
+    if (playingId === id) {
+      stopAudio();
+      setPlayingId(null);
+    } else {
+      setPlayingId(id);
+      const urlToPlay = audioUrl || '/public/sample_voicenote.mp3';
+      playAudio(
+        urlToPlay,
+        () => setPlayingId(null),
+        () => setPlayingId(null)
+      );
+    }
+  };
+
+  const filters = ['All', 'Free Session', 'Anxiety', 'Relationships', 'Family', 'Trauma'];
+
+  const rawList: CounsellorItem[] = apiData?.data || [];
+  const counsellors = rawList
+    .filter((c) => {
+      if (selectedFilter === 'Free Session') return c.hasFreeSessionOffer !== false;
+      if (selectedFilter !== 'All') return c.areasOfFocus?.includes(selectedFilter);
+      return true;
+    })
+    .map((c) => ({
+      id: c._id,
+      name: c.fullName,
+      initial: c.fullName ? c.fullName[0] : 'C',
+      verified: c.isVerified,
+      exp: `${c.experienceYears || 5} yrs experience`,
+      langs: (c.languages || ['English']).join(', '),
+      price: c.hasFreeSessionOffer ? 'Free' : `₹${c.rates?.chat || 499}`,
+      rating: `${c.rating || 4.9} (${c.reviewCount || 20} reviews)`,
+      next: 'Available today',
+      tags: c.areasOfFocus || ['Anxiety', 'Mindset'],
+      hasFree: c.hasFreeSessionOffer !== false,
+      freeText: c.freeSessionDurationText || '40 min · Free',
+      duration: c.voiceNote?.duration || '0:38',
+      audioUrl: c.voiceNote?.audioUrl,
+      rawCounsellor: c,
+    }));
+
+  const showSkeleton = isLoading || (isFetching && counsellors.length === 0);
 
   return (
     <View style={styles.container}>
@@ -65,67 +118,114 @@ export default function SearchScreen({ navigation }: any) {
         </View>
 
         {/* List of Counsellors */}
-        <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner} showsVerticalScrollIndicator={false}>
-          {counsellors.map((counsellor, idx) => (
-            <View key={idx} style={styles.counsellorCard}>
-              {/* Card Top */}
-              <View style={styles.ccTop}>
-                <View style={styles.ccAvatar}><Text style={styles.ccInitial}>{counsellor.initial}</Text></View>
-                <View style={styles.ccInfo}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.ccName}>{counsellor.name}</Text>
-                    {counsellor.verified ? (
-                      <View style={styles.verifiedBadge}>
-                        <Text style={styles.verifiedText}>✓ Verified</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={styles.ccSubtext}>{`${counsellor.exp} • ${counsellor.langs}`}</Text>
-                  <View style={styles.ratingRow}>
-                    <StarIcon width={px(12)} height={px(12)} />
-                    <Text style={styles.ratingText}>{counsellor.rating}</Text>
-                  </View>
-                </View>
-                <View style={styles.ccRight}>
-                  <Text style={styles.ccPrice}>{counsellor.price}</Text>
-                  <Text style={styles.ccPriceSub}>per session</Text>
-                </View>
-              </View>
-
-              {/* Audio Player */}
-              <View style={styles.audioPlayer}>
-                <TouchableOpacity style={styles.playBtn} activeOpacity={0.8}>
-                  <PlayIcon width={px(12)} height={px(12)} fill="#FFFFFF" stroke="#FFFFFF" />
-                </TouchableOpacity>
-                <View style={{ flex: 1, paddingHorizontal: 12 }}>
-                  <WaveformSVG width={px(140)} height={px(16)} stroke={colors.primary} />
-                </View>
-                <Text style={styles.audioTime}>0:42</Text>
-              </View>
-
-              {/* Bottom Section (Tags + Next availability) */}
-              <View style={styles.ccBottom}>
-                <View style={styles.tagsRow}>
-                  {counsellor.tags.map((t, i) => (
-                    <View key={i} style={styles.tagPill}><Text style={styles.tagText}>{t}</Text></View>
-                  ))}
-                </View>
-                <View style={styles.nextInfoRow}>
-                  <View style={styles.nextInfo}>
-                    <ClockIcon width={px(12)} height={px(12)} />
-                    <Text style={[styles.nextText, counsellor.next.includes('today') ? { color: colors.primary } : null]}>
-                      {counsellor.next.startsWith('Next:') ? counsellor.next : `Next: ${counsellor.next}`}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Action Button */}
-              <TouchableOpacity style={styles.profileBtn} activeOpacity={0.8} onPress={() => navigation.navigate('BookSession', { counsellor })}>
-                <Text style={styles.profileBtnText}>View Profile</Text>
-              </TouchableOpacity>
+        <ScrollView
+          style={styles.scrollContent}
+          contentContainerStyle={styles.scrollInner}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          {showSkeleton ? (
+            <>
+              <CounsellorCardSkeleton />
+              <CounsellorCardSkeleton />
+              <CounsellorCardSkeleton />
+            </>
+          ) : counsellors.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No counsellors found</Text>
+              <Text style={styles.emptySub}>Try selecting a different filter or search term.</Text>
             </View>
-          ))}
+          ) : (
+            counsellors.map((counsellor: any, idx: number) => {
+              const isPlaying = playingId === counsellor.id;
+              return (
+                <View key={counsellor.id || idx} style={styles.counsellorCard}>
+                  {counsellor.hasFree ? (
+                    <View style={styles.freeBadgeRow}>
+                      <Text style={styles.freeBadgeText}>🎁 Free session offer</Text>
+                    </View>
+                  ) : null}
+
+                  {/* Card Top */}
+                  <View style={styles.ccTop}>
+                    <View style={styles.ccAvatar}><Text style={styles.ccInitial}>{counsellor.initial}</Text></View>
+                    <View style={styles.ccInfo}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.ccName}>{counsellor.name}</Text>
+                        {counsellor.verified ? (
+                          <View style={styles.verifiedBadge}>
+                            <Text style={styles.verifiedText}>✓ Verified</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text style={styles.ccSubtext}>{`${counsellor.exp} • ${counsellor.langs}`}</Text>
+                      <View style={styles.ratingRow}>
+                        <StarIcon width={px(12)} height={px(12)} fill="#F5A623" stroke="#F5A623" />
+                        <Text style={styles.ratingText}>{counsellor.rating}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.ccRight}>
+                      <Text style={[styles.ccPrice, counsellor.hasFree ? { color: colors.primary, fontWeight: '700' } : null]}>{counsellor.price}</Text>
+                      <Text style={styles.ccPriceSub}>{counsellor.hasFree ? 'First session' : 'per session'}</Text>
+                    </View>
+                  </View>
+
+                  {/* Audio Player */}
+                  <View style={styles.audioPlayer}>
+                    <TouchableOpacity
+                      style={[styles.playBtn, isPlaying ? { backgroundColor: '#4A684F' } : null]}
+                      activeOpacity={0.8}
+                      onPress={() => togglePlay(counsellor.id, counsellor.audioUrl)}
+                    >
+                      <PlayIcon width={px(12)} height={px(12)} fill="#FFFFFF" stroke="#FFFFFF" />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1, paddingHorizontal: 12 }}>
+                      <WaveformSVG width={px(140)} height={px(16)} stroke={isPlaying ? '#4A684F' : colors.primary} />
+                    </View>
+                    <Text style={styles.audioTime}>{counsellor.duration || '0:38'}</Text>
+                  </View>
+
+                  {/* Bottom Section (Tags + Next availability) */}
+                  <View style={styles.ccBottom}>
+                    <View style={styles.tagsRow}>
+                      {counsellor.tags.map((t: string, i: number) => (
+                        <View key={i} style={styles.tagPill}><Text style={styles.tagText}>{t}</Text></View>
+                      ))}
+                      {counsellor.hasFree ? (
+                        <View style={styles.freeHighlightPill}>
+                          <Text style={styles.freeHighlightText}>{counsellor.freeText}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.nextInfoRow}>
+                      <View style={styles.nextInfo}>
+                        <ClockIcon width={px(12)} height={px(12)} />
+                        <Text style={[styles.nextText, counsellor.next.includes('today') ? { color: colors.primary } : null]}>
+                          {counsellor.next.startsWith('Next:') ? counsellor.next : `Next: ${counsellor.next}`}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Action Button */}
+                  <TouchableOpacity
+                    style={styles.profileBtn}
+                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('BookSession', { counsellor: counsellor.rawCounsellor || counsellor, isFreeOffer: counsellor.hasFree })}
+                  >
+                    <Text style={styles.profileBtnText}>{counsellor.hasFree ? 'Accept & Pick a Slot' : 'View Profile & Book'}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })
+          )}
           <View style={{ height: 24 }} />
         </ScrollView>
       </SafeAreaView>
@@ -330,6 +430,30 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans.regular,
     color: colors.textSecondary,
   },
+  freeBadgeRow: {
+    backgroundColor: '#F5F2EA',
+    paddingHorizontal: px(12),
+    paddingVertical: px(5),
+    borderRadius: px(12),
+    alignSelf: 'flex-start',
+    marginBottom: px(12),
+  },
+  freeBadgeText: {
+    fontSize: px(12),
+    fontFamily: fonts.sans.medium,
+    color: colors.primary,
+  },
+  freeHighlightPill: {
+    backgroundColor: '#E5EFE7',
+    paddingHorizontal: px(12),
+    paddingVertical: px(6),
+    borderRadius: px(12),
+  },
+  freeHighlightText: {
+    fontSize: px(12),
+    fontFamily: fonts.sans.medium,
+    color: colors.primary,
+  },
   nextInfoRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -357,5 +481,27 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: px(14),
     fontFamily: fonts.sans.bold,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: px(20),
+    padding: px(24),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: px(20),
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyTitle: {
+    fontSize: px(16),
+    fontFamily: fonts.sans.bold,
+    color: colors.black,
+    marginBottom: px(6),
+  },
+  emptySub: {
+    fontSize: px(13),
+    fontFamily: fonts.sans.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

@@ -22,6 +22,9 @@ export default function BookingConfirmedScreen({ route, navigation }: any) {
     navigation.navigate('Main');
   };
 
+  const paymentId = route?.params?.paymentId;
+  const paymentMethod = route?.params?.paymentMethod || 'Free Session';
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -38,6 +41,13 @@ export default function BookingConfirmedScreen({ route, navigation }: any) {
           <Text style={styles.subtitle}>
             {`${sessionType} session with ${counsellorName} · ${dateText} at ${timeText}`}
           </Text>
+
+          {paymentId && (
+            <View style={styles.paymentBadgeBox}>
+              <Text style={styles.paymentBadgeText}>Payment ID: {paymentId}</Text>
+              <Text style={styles.paymentMethodText}>Secured via {paymentMethod}</Text>
+            </View>
+          )}
 
           {/* Primary Action Button */}
           <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.8} onPress={handleOpenChat}>
@@ -89,8 +99,27 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans.regular,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: px(32),
+    marginBottom: px(20),
     lineHeight: px(18),
+  },
+  paymentBadgeBox: {
+    backgroundColor: '#EEF5F0',
+    paddingVertical: px(10),
+    paddingHorizontal: px(16),
+    borderRadius: px(12),
+    alignItems: 'center',
+    marginBottom: px(24),
+  },
+  paymentBadgeText: {
+    fontSize: px(12),
+    fontFamily: fonts.sans.bold,
+    color: colors.primary,
+  },
+  paymentMethodText: {
+    fontSize: px(10),
+    fontFamily: fonts.sans.regular,
+    color: colors.textSecondary,
+    marginTop: px(2),
   },
   primaryBtn: {
     width: '100%',

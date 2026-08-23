@@ -8,7 +8,8 @@ import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
 
 export default function SessionRatesScreen({ navigation }: any) {
-  const [selectedRate, setSelectedRate] = useState<string | null>(null);
+  const [selectedRate, setSelectedRate] = useState<string | null>('700');
+  const [offerFreeSession, setOfferFreeSession] = useState<boolean>(true);
 
   const options = ['600', '700', '800'];
 
@@ -56,7 +57,22 @@ export default function SessionRatesScreen({ navigation }: any) {
             })}
           </View>
 
-          <Text style={styles.bottomInfoText}>You can update your rate later from your profile settings.</Text>
+          {/* Free Session Offer Card */}
+          <TouchableOpacity
+            style={[styles.freeOfferCard, offerFreeSession && styles.freeOfferCardActive]}
+            activeOpacity={0.8}
+            onPress={() => setOfferFreeSession(!offerFreeSession)}
+          >
+            <View style={styles.freeOfferLeft}>
+              <Text style={styles.freeOfferTitle}>🎁 Offer 1st Session Free</Text>
+              <Text style={styles.freeOfferSubtitle}>Attract new clients with a complimentary 40-min intro session.</Text>
+            </View>
+            <View style={[styles.freeOfferCheckbox, offerFreeSession && styles.freeOfferCheckboxActive]}>
+              {offerFreeSession && <Text style={styles.checkmarkText}>✓</Text>}
+            </View>
+          </TouchableOpacity>
+
+          <Text style={styles.bottomInfoText}>You can update your rate and free offer later from your profile settings.</Text>
         </ScrollView>
 
         <View style={styles.footer}>
@@ -153,6 +169,55 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     color: colors.primary,
+  },
+  freeOfferCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: px(16),
+    borderWidth: 1.5,
+    borderColor: '#E5E5EA',
+    padding: px(16),
+    marginTop: px(20),
+  },
+  freeOfferCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: '#EEF5F0',
+  },
+  freeOfferLeft: {
+    flex: 1,
+    paddingRight: px(12),
+  },
+  freeOfferTitle: {
+    fontSize: px(15),
+    fontFamily: fonts.sans.bold,
+    color: '#1A1A1A',
+    marginBottom: px(4),
+  },
+  freeOfferSubtitle: {
+    fontSize: px(12),
+    fontFamily: fonts.sans.regular,
+    color: colors.textSecondary,
+    lineHeight: px(16),
+  },
+  freeOfferCheckbox: {
+    width: px(24),
+    height: px(24),
+    borderRadius: px(12),
+    borderWidth: 2,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  freeOfferCheckboxActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkmarkText: {
+    color: '#FFFFFF',
+    fontSize: px(14),
+    fontFamily: fonts.sans.bold,
   },
   bottomInfoText: {
     fontSize: px(12),
