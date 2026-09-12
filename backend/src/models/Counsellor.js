@@ -64,9 +64,30 @@ const counsellorSchema = new mongoose.Schema(
     availableSlots: [{
       type: String,
     }],
+    // Approval workflow. Counsellors self-register through the counsellor app and
+    // land as 'pending'; an admin then approves or rejects them. Only 'approved'
+    // counsellors are visible on the client side.
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+      index: true,
+    },
+    rejectionReason: {
+      type: String,
+      default: '',
+    },
+    reviewedAt: {
+      type: Date,
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+    },
+    // Kept in sync with approvalStatus === 'approved' for backward compatibility.
     isVerified: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     isOnboardingComplete: {
       type: Boolean,

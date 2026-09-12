@@ -35,6 +35,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string/>
+	<key>NSCameraUsageDescription</key>
+	<string>Endhalla needs camera access for video counselling sessions.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Endhalla needs microphone access for video counselling sessions.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

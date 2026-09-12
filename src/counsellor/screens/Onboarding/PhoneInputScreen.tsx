@@ -8,11 +8,22 @@ import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
 import CustomInput from '../../../shared/components/CustomInput';
 import { validatePhone, isSequentialPhone } from '../../../shared/utils/validation';
+import { useSendCounsellorOTPMutation } from '../../../shared/store/api/counsellorApi';
 
 export default function PhoneInputScreen({ navigation }: any) {
   const [phone, setPhone] = useState('');
+  const [sendOTP, { isLoading }] = useSendCounsellorOTPMutation();
   const isValid = validatePhone(phone);
   const isSequential = phone.length === 10 && isSequentialPhone(phone);
+
+  const handleSendCode = async () => {
+    try {
+      await sendOTP({ phone }).unwrap();
+    } catch (e) {
+      console.log('Counsellor OTP send fallback:', e);
+    }
+    navigation.navigate('OTPVerification', { phone });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,8 +64,8 @@ export default function PhoneInputScreen({ navigation }: any) {
           <View style={styles.footer}>
             <CustomButton
               title="Send Code"
-              disabled={!isValid}
-              onPress={() => navigation.navigate('OTPVerification')}
+              disabled={!isValid || isLoading}
+              onPress={handleSendCode}
             />
           </View>
         </KeyboardAvoidingView>

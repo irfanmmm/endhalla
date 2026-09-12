@@ -7,8 +7,14 @@ import ArrowLeftIcon from '../../../shared/assets/icons/back-icon.svg';
 import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
 import OTPInput from '../../../shared/components/OTPInput';
+import { useAppDispatch } from '../../../shared/store';
+import { loginUser } from '../../../shared/store/authSlice';
+import { useVerifyCounsellorOTPMutation } from '../../../shared/store/api/counsellorApi';
 
-export default function OTPVerificationScreen({ navigation }: any) {
+export default function OTPVerificationScreen({ route, navigation }: any) {
+  const dispatch = useAppDispatch();
+  const [verifyOTP, { isLoading }] = useVerifyCounsellorOTPMutation();
+  const phone = route?.params?.phone || '';
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
 
@@ -17,14 +23,20 @@ export default function OTPVerificationScreen({ navigation }: any) {
     if (error) setError('');
   };
 
-  const handleVerify = () => {
-    // Validation check
-    if (code !== '123456' && code.length === 6) {
-      setError('Invalid verification code. Please try again.');
-      setCode(''); // Clear the OTP box values on error!
-      return;
+  const handleVerify = async () => {
+    try {
+      const result = await verifyOTP({ phone, otp: code }).unwrap();
+      dispatch(
+        loginUser({
+          token: result.token,
+          user: result.user,
+        })
+      );
+      navigation.navigate('FullName', { phone });
+    } catch (e: any) {
+      setError(e?.data?.message || 'Invalid verification code. Please try again.');
+      setCode('');
     }
-    navigation.navigate('FullName');
   };
 
   return (
@@ -55,10 +67,10 @@ export default function OTPVerificationScreen({ navigation }: any) {
           </View>
 
           <View style={styles.footer}>
-            <CustomButton 
-              title="Verify" 
-              onPress={handleVerify} 
-              disabled={code.length !== 6}
+            <CustomButton
+              title="Verify"
+              onPress={handleVerify}
+              disabled={code.length !== 6 || isLoading}
             />
           </View>
         </KeyboardAvoidingView>

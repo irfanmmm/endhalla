@@ -5,20 +5,29 @@
   "scripts": {
     "start:client": "node src/client/server.js",
     "start:counsellor": "node src/counsellor/server.js",
+    "start:admin": "node src/admin/server.js",
     "dev:client": "nodemon src/client/server.js",
     "dev:counsellor": "nodemon src/counsellor/server.js",
-    "dev": "concurrently \"npm run dev:client\" \"npm run dev:counsellor\"",
-    "start": "concurrently \"npm run start:client\" \"npm run start:counsellor\"",
-    "seed": "node src/seed.js"
+    "dev:admin": "nodemon src/admin/server.js",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:counsellor\" \"npm run dev:admin\"",
+    "start": "concurrently \"npm run start:client\" \"npm run start:counsellor\" \"npm run start:admin\"",
+    "seed": "node src/seed.js",
+    "seed:admin": "node src/admin/seedAdmin.js",
+    "migrate:approval": "node src/scripts/backfillCounsellorApproval.js",
+    "migrate:scheduledAt": "node src/scripts/backfillScheduledAt.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@stream-io/node-sdk": "^0.8.6",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "firebase-admin": "^14.4.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.8.0",
     "razorpay": "^2.9.8"
   },

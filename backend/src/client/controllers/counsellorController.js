@@ -9,7 +9,8 @@ exports.getCounsellors = async (req, res) => {
   try {
     const { query, category, gender, maxPrice, minExperience, sortBy } = req.query;
 
-    let filter = { isVerified: true };
+    // Only admin-approved counsellors are visible to clients
+    let filter = { approvalStatus: 'approved' };
 
     // Search query (name, title, area of focus)
     if (query) {
@@ -74,7 +75,7 @@ exports.getCounsellors = async (req, res) => {
 exports.getCounsellorById = async (req, res) => {
   try {
     const { id } = req.params;
-    const counsellor = await Counsellor.findById(id);
+    const counsellor = await Counsellor.findOne({ _id: id, approvalStatus: 'approved' });
 
     if (!counsellor) {
       return res.status(404).json({ success: false, message: 'Counsellor not found' });

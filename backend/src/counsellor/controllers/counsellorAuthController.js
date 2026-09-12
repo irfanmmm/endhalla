@@ -1,6 +1,7 @@
 const Counsellor = require('../../models/Counsellor');
 const User = require('../../models/User');
 const OTP = require('../../models/OTP');
+const { signCounsellorToken } = require('../utils/token');
 
 /**
  * Send OTP to Counsellor Phone Number
@@ -69,7 +70,7 @@ exports.verifyOTP = async (req, res) => {
       });
     }
 
-    const token = `token_counsellor_${counsellor._id}_${Date.now()}`;
+    const token = signCounsellorToken(counsellor);
 
     return res.status(200).json({
       success: true,
@@ -122,7 +123,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    const token = `token_counsellor_${counsellor._id}_${Date.now()}`;
+    const token = signCounsellorToken(counsellor);
 
     return res.status(200).json({
       success: true,
@@ -193,6 +194,29 @@ exports.completeOnboarding = async (req, res) => {
   } catch (error) {
     console.error('Error in completeOnboarding:', error);
     return res.status(500).json({ success: false, message: 'Server error completing onboarding', error: error.message });
+  }
+};
+
+/**
+ * Register/update the FCM device token for the logged-in counsellor.
+ * PUT /api/counsellor/auth/push-token
+ */
+exports.updatePushToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Push token is required' });
+    }
+    if (!req.counsellor.userId) {
+      return res.status(400).json({ success: false, message: 'Counsellor has no linked user account' });
+    }
+
+    await User.findByIdAndUpdate(req.counsellor.userId, { pushToken: token });
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error in updatePushToken:', error);
+    return res.status(500).json({ success: false, message: 'Server error updating push token', error: error.message });
   }
 };
 

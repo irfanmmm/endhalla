@@ -1,12 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline, Path } from 'react-native-svg';
 import { px } from '../../../shared/utils/responsive';
 import { colors, fonts } from '../../theme';
 import CustomButton from '../../../shared/components/CustomButton';
-import { useAppDispatch } from '../../../shared/store';
-import { loginUser } from '../../../shared/store/authSlice';
 
 const SuccessIcon = () => (
   <View style={styles.iconCircle}>
@@ -24,25 +22,10 @@ const SmallShieldIcon = () => (
   </View>
 );
 
-export default function SuccessScreen({ route, navigation }: any) {
-  const dispatch = useAppDispatch();
-  const phone = route?.params?.phone || '+91 98765 43210';
-  const name = route?.params?.name || 'Aisha';
-  const gender = route?.params?.gender || 'Female';
-
+export default function SuccessScreen({ navigation }: any) {
+  // Auth session was already established for real at OTP verification —
+  // this screen just finishes the local onboarding UI and moves on.
   const handleFinishOnboarding = () => {
-    dispatch(
-      loginUser({
-        token: `counsellor_token_${Date.now()}`,
-        user: {
-          id: `cns_${Date.now()}`,
-          name,
-          phone,
-          gender,
-          userType: 'counsellor',
-        },
-      })
-    );
     navigation.navigate('CounsellorDashboard');
   };
 

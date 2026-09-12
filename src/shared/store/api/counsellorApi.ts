@@ -28,12 +28,31 @@ export interface UpdateSettingsRequest {
   availableSlots?: string[];
 }
 
+export interface CallTokenResponse {
+  success: boolean;
+  apiKey: string;
+  token: string;
+  callId: string;
+  userId: string;
+  userName: string;
+}
+
+export interface ChatTokenResponse {
+  success: boolean;
+  apiKey: string;
+  token: string;
+  userId: string;
+  userName: string;
+}
+
 const dynamicBaseQuery = async (args: any, api: any, extraOptions: any) => {
   const baseUrl = getCounsellorBaseUrl();
   const rawBaseQuery = fetchBaseQuery({
     baseUrl,
-    prepareHeaders: (headers) => {
+    prepareHeaders: (headers, { getState }) => {
       headers.set('Content-Type', 'application/json');
+      const token = (getState() as any).auth?.token;
+      if (token) headers.set('Authorization', `Bearer ${token}`);
       return headers;
     },
   });
@@ -43,7 +62,7 @@ const dynamicBaseQuery = async (args: any, api: any, extraOptions: any) => {
 export const counsellorApi = createApi({
   reducerPath: 'counsellorApi',
   baseQuery: dynamicBaseQuery,
-  tagTypes: ['CounsellorProfile', 'Dashboard'],
+  tagTypes: ['CounsellorProfile', 'Dashboard', 'Booking'],
   endpoints: (builder) => ({
     // Auth & Onboarding Endpoints
     sendCounsellorOTP: builder.mutation<{ success: boolean; message: string; otp?: string }, SendCounsellorOtpRequest>({
@@ -73,6 +92,13 @@ export const counsellorApi = createApi({
       query: (phone) => `/auth/profile/${phone}`,
       providesTags: ['CounsellorProfile'],
     }),
+    updateCounsellorPushToken: builder.mutation<{ success: boolean }, string>({
+      query: (token) => ({
+        url: '/auth/push-token',
+        method: 'PUT',
+        body: { token },
+      }),
+    }),
 
     // Dashboard Endpoints
     getDashboardOverview: builder.query<{ success: boolean; stats: any; upcomingBookings: any[] }, string>({
@@ -87,6 +113,27 @@ export const counsellorApi = createApi({
       }),
       invalidatesTags: ['CounsellorProfile', 'Dashboard'],
     }),
+
+    // Booking / video-call endpoints
+    getCounsellorBookingById: builder.query<{ success: boolean; data: any }, string>({
+      query: (id) => `/bookings/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Booking', id }],
+    }),
+    getCounsellorCallToken: builder.query<CallTokenResponse, string>({
+      query: (bookingId) => `/bookings/${bookingId}/call-token`,
+    }),
+    endCounsellorCall: builder.mutation<{ success: boolean }, string>({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/call/end`,
+        method: 'POST',
+      }),
+    }),
+    getCounsellorChatToken: builder.query<ChatTokenResponse, void>({
+      query: () => '/chat/token',
+    }),
+    getCounsellorChatChannel: builder.query<{ success: boolean; channelId: string }, string>({
+      query: (bookingId) => `/bookings/${bookingId}/chat-channel`,
+    }),
   }),
 });
 
@@ -95,6 +142,13 @@ export const {
   useVerifyCounsellorOTPMutation,
   useCompleteOnboardingMutation,
   useGetCounsellorProfileQuery,
+  useUpdateCounsellorPushTokenMutation,
   useGetDashboardOverviewQuery,
   useUpdateCounsellorSettingsMutation,
+  useGetCounsellorBookingByIdQuery,
+  useLazyGetCounsellorCallTokenQuery,
+  useEndCounsellorCallMutation,
+  useGetCounsellorChatTokenQuery,
+  useLazyGetCounsellorChatTokenQuery,
+  useLazyGetCounsellorChatChannelQuery,
 } = counsellorApi;

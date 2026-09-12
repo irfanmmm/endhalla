@@ -2,6 +2,52 @@ const mongoose = require('mongoose');
 const Booking = require('../../models/Booking');
 const Counsellor = require('../../models/Counsellor');
 const User = require('../../models/User');
+const { mintCallToken, endCall: endCallForBooking, CallTokenError } = require('../../utils/callToken');
+const { provisionChatChannel } = require('../../utils/chatToken');
+const { sendPushNotification } = require('../../utils/pushNotification');
+
+// Best-effort notification helpers — never let a lookup/send failure affect
+// the booking/payment response they're attached to.
+async function notifyCounsellorOfNewBooking(booking) {
+  try {
+    let counsellor = booking.counsellorId ? await Counsellor.findById(booking.counsellorId) : null;
+    if (!counsellor) {
+      counsellor = await Counsellor.findOne({ fullName: booking.counsellorName });
+    }
+    if (!counsellor?.userId) return;
+
+    const counsellorUser = await User.findById(counsellor.userId);
+    if (!counsellorUser?.pushToken) return;
+
+    await sendPushNotification({
+      token: counsellorUser.pushToken,
+      title: 'New booking',
+      body: `${booking.clientName || 'A client'} booked a ${booking.sessionType} session for ${booking.dateText} at ${booking.timeText}.`,
+      data: { type: 'booking', bookingId: String(booking._id) },
+    });
+  } catch (error) {
+    console.error('Failed to notify counsellor of new booking:', error.message);
+  }
+}
+
+async function notifyClientOfPayment(booking) {
+  try {
+    let clientUser = booking.clientId ? await User.findById(booking.clientId) : null;
+    if (!clientUser && booking.clientPhone) {
+      clientUser = await User.findOne({ phone: booking.clientPhone });
+    }
+    if (!clientUser?.pushToken) return;
+
+    await sendPushNotification({
+      token: clientUser.pushToken,
+      title: 'Payment confirmed',
+      body: `Your payment for the session with ${booking.counsellorName} is confirmed.`,
+      data: { type: 'payment', bookingId: String(booking._id) },
+    });
+  } catch (error) {
+    console.error('Failed to notify client of payment:', error.message);
+  }
+}
 
 /**
  * Create a new session booking
@@ -65,6 +111,7 @@ exports.createBooking = async (req, res) => {
     });
 
     console.log(`[BOOKING CREATED] ID: ${booking._id} for ${counsellorName} with ${clientPhone}`);
+    notifyCounsellorOfNewBooking(booking);
 
     return res.status(201).json({
       success: true,
@@ -118,6 +165,110 @@ exports.getBookingById = async (req, res) => {
   } catch (error) {
     console.error('Error in getBookingById:', error);
     return res.status(500).json({ success: false, message: 'Server error fetching booking', error: error.message });
+  }
+};
+
+/**
+ * Mint a Stream Video call token for a video-session booking.
+ * GET /api/bookings/:id/call-token
+ */
+exports.getCallToken = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const isOwner = booking.clientId
+      ? String(booking.clientId) === String(req.clientUser._id)
+      : booking.clientPhone === req.clientUser.phone;
+    if (!isOwner) {
+      return res.status(403).json({ success: false, message: 'Not your booking' });
+    }
+
+    const result = await mintCallToken({
+      bookingId: id,
+      requesterUserId: req.clientUser._id,
+      requesterName: req.clientUser.name || 'Client',
+    });
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    if (error instanceof CallTokenError) {
+      return res.status(error.status).json({ success: false, message: error.message, reason: error.reason });
+    }
+    console.error('Error in getCallToken:', error);
+    return res.status(500).json({ success: false, message: 'Server error generating call token', error: error.message });
+  }
+};
+
+/**
+ * Mark a video call as ended (best-effort UI state).
+ * POST /api/bookings/:id/call/end
+ */
+exports.endCall = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const isOwner = booking.clientId
+      ? String(booking.clientId) === String(req.clientUser._id)
+      : booking.clientPhone === req.clientUser.phone;
+    if (!isOwner) {
+      return res.status(403).json({ success: false, message: 'Not your booking' });
+    }
+
+    await endCallForBooking({ bookingId: id });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error in endCall:', error);
+    return res.status(500).json({ success: false, message: 'Server error ending call', error: error.message });
+  }
+};
+
+/**
+ * Ensure a chat channel exists between this client and the booking's counsellor.
+ * GET /api/bookings/:id/chat-channel
+ */
+exports.getChatChannel = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const isOwner = booking.clientId
+      ? String(booking.clientId) === String(req.clientUser._id)
+      : booking.clientPhone === req.clientUser.phone;
+    if (!isOwner) {
+      return res.status(403).json({ success: false, message: 'Not your booking' });
+    }
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'This booking is cancelled' });
+    }
+
+    let counsellor = booking.counsellorId ? await Counsellor.findById(booking.counsellorId) : null;
+    if (!counsellor) {
+      counsellor = await Counsellor.findOne({ fullName: booking.counsellorName });
+    }
+    if (!counsellor || !counsellor.userId) {
+      return res.status(400).json({ success: false, message: 'Counsellor account not found' });
+    }
+
+    const result = await provisionChatChannel({
+      clientUser: { id: req.clientUser._id, name: req.clientUser.name },
+      counsellorUser: { id: counsellor.userId, name: counsellor.fullName },
+    });
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error in getChatChannel:', error);
+    return res.status(500).json({ success: false, message: 'Server error provisioning chat channel', error: error.message });
   }
 };
 
@@ -328,6 +479,8 @@ exports.verifyRazorpayPayment = async (req, res) => {
     });
 
     console.log(`[SECURE PAYMENT VERIFIED] Booking ID: ${booking._id}, Payment ID: ${booking.razorpayPaymentId}`);
+    notifyCounsellorOfNewBooking(booking);
+    notifyClientOfPayment(booking);
 
     return res.status(200).json({
       success: true,
@@ -388,6 +541,9 @@ exports.handleRazorpayWebhook = async (req, res) => {
         );
 
         console.log(`[RAZORPAY WEBHOOK] Payment captured for Order: ${orderId}, Payment: ${paymentId}`);
+        if (updatedBooking) {
+          notifyClientOfPayment(updatedBooking);
+        }
       }
     }
 

@@ -147,3 +147,7 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// Must be applied last — reads the finalized applicationId/flavors to match
+// against google-services.json's registered package names.
+apply plugin: "com.google.gms.google-services"

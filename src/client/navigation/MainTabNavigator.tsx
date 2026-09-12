@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   Pressable,
   Platform,
   StyleSheet,
@@ -15,6 +14,7 @@ import Svg, { Path, Polyline, Circle, Line } from 'react-native-svg';
 import HomeScreen from '../screens/Home/HomeScreen';
 import SearchScreen from '../screens/Search/SearchScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
+import MessagesScreen from '../screens/Chat/MessagesScreen';
 import { px } from '../../shared/utils/responsive';
 import { colors, fonts } from '../theme';
 
@@ -51,9 +51,6 @@ const ProfileIcon = ({ color = '#9D9D9D' }: { color?: string }) => (
     <Circle cx="12" cy="7" r="4"></Circle>
   </Svg>
 );
-
-// Placeholder screen for unused tabs
-const PlaceholderScreen = () => <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
 interface AnimatedTabItemProps {
   label: string;
@@ -258,7 +255,7 @@ export default function MainTabNavigator() {
     <Tab.Navigator tabBar={props => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
-      <Tab.Screen name="Messages" component={PlaceholderScreen} />
+      <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

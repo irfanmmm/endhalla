@@ -28,6 +28,23 @@ export interface CreateBookingRequest {
   notes?: string;
 }
 
+export interface CallTokenResponse {
+  success: boolean;
+  apiKey: string;
+  token: string;
+  callId: string;
+  userId: string;
+  userName: string;
+}
+
+export interface ChatTokenResponse {
+  success: boolean;
+  apiKey: string;
+  token: string;
+  userId: string;
+  userName: string;
+}
+
 export interface GetCounsellorsQueryArgs {
   query?: string;
   category?: string;
@@ -73,8 +90,10 @@ const dynamicBaseQuery = async (args: any, api: any, extraOptions: any) => {
   const baseUrl = getClientBaseUrl();
   const rawBaseQuery = fetchBaseQuery({
     baseUrl,
-    prepareHeaders: (headers) => {
+    prepareHeaders: (headers, { getState }) => {
       headers.set('Content-Type', 'application/json');
+      const token = (getState() as any).auth?.token;
+      if (token) headers.set('Authorization', `Bearer ${token}`);
       return headers;
     },
   });
@@ -121,6 +140,13 @@ export const clientApi = createApi({
     getClientProfile: builder.query<{ success: boolean; user: any }, string>({
       query: (phone) => `/auth/profile/${phone}`,
       providesTags: ['Profile'],
+    }),
+    updatePushToken: builder.mutation<{ success: boolean }, string>({
+      query: (token) => ({
+        url: '/auth/push-token',
+        method: 'PUT',
+        body: { token },
+      }),
     }),
 
     // Counsellor Search & Catalog Endpoints
@@ -198,6 +224,25 @@ export const clientApi = createApi({
       }),
       invalidatesTags: ['Booking'],
     }),
+    getBookingById: builder.query<{ success: boolean; data: any }, string>({
+      query: (id) => `/bookings/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Booking', id }],
+    }),
+    getCallToken: builder.query<CallTokenResponse, string>({
+      query: (bookingId) => `/bookings/${bookingId}/call-token`,
+    }),
+    endCall: builder.mutation<{ success: boolean }, string>({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/call/end`,
+        method: 'POST',
+      }),
+    }),
+    getChatToken: builder.query<ChatTokenResponse, void>({
+      query: () => '/chat/token',
+    }),
+    getChatChannel: builder.query<{ success: boolean; channelId: string }, string>({
+      query: (bookingId) => `/bookings/${bookingId}/chat-channel`,
+    }),
   }),
 });
 
@@ -208,6 +253,7 @@ export const {
   useUpdateClientProfileMutation,
   useGetClientProfileQuery,
   useLazyGetClientProfileQuery,
+  useUpdatePushTokenMutation,
   useGetCounsellorsQuery,
   useGetCounsellorByIdQuery,
   useGetCategoriesQuery,
@@ -217,4 +263,10 @@ export const {
   useGetClientBookingsQuery,
   useGetBookedSlotsQuery,
   useCancelBookingMutation,
+  useGetBookingByIdQuery,
+  useLazyGetCallTokenQuery,
+  useEndCallMutation,
+  useGetChatTokenQuery,
+  useLazyGetChatTokenQuery,
+  useLazyGetChatChannelQuery,
 } = clientApi;

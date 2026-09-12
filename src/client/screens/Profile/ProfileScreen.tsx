@@ -173,7 +173,26 @@ export default function ProfileScreen({ navigation }: any) {
             <ChevronRight color="#4A684F" size={px(18)} />
           </TouchableOpacity>
 
-          {/* SECTION 1: ACCOUNT */}
+          {/* SECTION 1: SESSIONS */}
+          <View style={styles.sectionHeaderBox}>
+            <Text style={styles.sectionHeaderText}>SESSIONS</Text>
+          </View>
+
+          <View style={styles.groupCard}>
+            <TouchableOpacity
+              style={styles.rowItem}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('MyBookings')}
+            >
+              <View style={styles.rowLeft}>
+                <FileTextIcon size={px(20)} color="#4A684F" />
+                <Text style={styles.rowTitle}>My Bookings</Text>
+              </View>
+              <ChevronRight color="#C2C0B8" size={px(16)} />
+            </TouchableOpacity>
+          </View>
+
+          {/* SECTION 2: ACCOUNT */}
           <View style={styles.sectionHeaderBox}>
             <Text style={styles.sectionHeaderText}>ACCOUNT</Text>
           </View>

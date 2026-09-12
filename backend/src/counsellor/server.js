@@ -5,6 +5,8 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 
@@ -31,6 +33,8 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/counsellor/auth', authRoutes);
 app.use('/api/counsellor/dashboard', dashboardRoutes);
+app.use('/api/counsellor/bookings', bookingRoutes);
+app.use('/api/counsellor/chat', chatRoutes);
 
 // 404 Handler
 app.use((req, res) => {

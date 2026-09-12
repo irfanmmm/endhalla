@@ -31,6 +31,18 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
+# Firebase's Objective-C pods (e.g. GoogleUtilities, pulled in transitively)
+# don't define Clang modules on their own, which static-library Swift pods
+# (FirebaseCoreInternal) need in order to import them. This generates module
+# maps for every pod so that works.
+use_modular_headers!
+
+# react-native-firebase's Swift Package Manager-resolved Firebase pods aren't
+# compatible with static linkage (each pod embeds its own copy, colliding at
+# link time). Fall back to the CocoaPods-sourced Firebase pods instead, which
+# work fine with static linkage — needed here for Stream Video's WebRTC pod.
+$RNFirebaseDisableSPM = true
+
 target 'Endhalla' do
   config = use_native_modules!
 

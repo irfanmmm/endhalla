@@ -1,5 +1,5 @@
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import DashboardScreen from "../screens/DashboardScreen";
 import LoginScreen from "../screens/Onboarding/LoginScreen";
@@ -13,12 +13,37 @@ import LanguagesScreen from "../screens/Onboarding/LanguagesScreen";
 import AreasOfFocusScreen from "../screens/Onboarding/AreasOfFocusScreen";
 import CertificatesScreen from "../screens/Onboarding/CertificatesScreen";
 import SuccessScreen from "../screens/Onboarding/SuccessScreen";
+import VideoCallScreen from "../../shared/videoCall/VideoCallScreen";
+import ChatScreen from "../../shared/chat/ChatScreen";
+import MessagesScreen from "../screens/Chat/MessagesScreen";
+import { useAppSelector } from "../../shared/store";
+import { usePushNotifications } from "../../shared/utils/usePushNotifications";
+import { useUpdateCounsellorPushTokenMutation, useLazyGetCounsellorChatTokenQuery } from "../../shared/store/api/counsellorApi";
 
 const Stack = createNativeStackNavigator();
+export const navigationRef = createNavigationContainerRef<any>();
 
 export default function AppNavigator() {
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const [updatePushToken] = useUpdateCounsellorPushTokenMutation();
+  const [fetchChatToken] = useLazyGetCounsellorChatTokenQuery();
+
+  usePushNotifications({
+    enabled: isAuthenticated,
+    registerToken: (token) => updatePushToken(token).unwrap(),
+    getChatToken: () => fetchChatToken().unwrap(),
+    onNotificationTap: (data) => {
+      if (!navigationRef.isReady()) return;
+      if (data.type === 'booking' || data.type === 'payment' || data.type === 'counsellor_review') {
+        navigationRef.navigate('CounsellorDashboard');
+      } else if (data.type === 'chat') {
+        navigationRef.navigate('Messages');
+      }
+    },
+  });
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="PhoneInput" component={PhoneInputScreen} />
@@ -33,6 +58,9 @@ export default function AppNavigator() {
         <Stack.Screen name="Success" component={SuccessScreen} />
 
         <Stack.Screen name="CounsellorDashboard" component={DashboardScreen} />
+        <Stack.Screen name="VideoCall" component={VideoCallScreen} options={{ presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="Messages" component={MessagesScreen} />
+        <Stack.Screen name="ChatScreen" component={ChatScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

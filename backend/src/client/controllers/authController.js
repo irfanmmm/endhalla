@@ -1,5 +1,6 @@
 const User = require('../../models/User');
 const OTP = require('../../models/OTP');
+const { signClientToken } = require('../utils/token');
 
 /**
  * Send OTP to Client Phone Number
@@ -64,7 +65,7 @@ exports.verifyOTP = async (req, res) => {
     }
 
     // Generate auth token
-    const token = `token_client_${user._id}_${Date.now()}`;
+    const token = signClientToken(user);
 
     return res.status(200).json({
       success: true,
@@ -117,7 +118,7 @@ exports.login = async (req, res) => {
       isExistingUser = false;
     }
 
-    const token = `token_client_${user._id}_${Date.now()}`;
+    const token = signClientToken(user);
 
     console.log(`[CLIENT LOGIN] Phone: ${phone}, ExistingUser: ${isExistingUser}`);
 
@@ -171,6 +172,27 @@ exports.updateProfile = async (req, res) => {
   } catch (error) {
     console.error('Error in updateProfile:', error);
     return res.status(500).json({ success: false, message: 'Server error updating profile', error: error.message });
+  }
+};
+
+/**
+ * Register/update the FCM device token for the logged-in client.
+ * PUT /api/auth/push-token
+ */
+exports.updatePushToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Push token is required' });
+    }
+
+    req.clientUser.pushToken = token;
+    await req.clientUser.save();
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error in updatePushToken:', error);
+    return res.status(500).json({ success: false, message: 'Server error updating push token', error: error.message });
   }
 };
 

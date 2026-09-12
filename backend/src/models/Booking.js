@@ -34,6 +34,10 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    scheduledAt: {
+      type: Date,
+      index: true,
+    },
     price: {
       type: String,
       required: true,
@@ -42,6 +46,17 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       enum: ['confirmed', 'completed', 'cancelled'],
       default: 'confirmed',
+    },
+    callStatus: {
+      type: String,
+      enum: ['not_started', 'ongoing', 'ended'],
+      default: 'not_started',
+    },
+    callStartedAt: {
+      type: Date,
+    },
+    callEndedAt: {
+      type: Date,
     },
     paymentStatus: {
       type: String,
@@ -73,5 +88,12 @@ const bookingSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+bookingSchema.pre('save', function () {
+  if (this.isModified('dateText') || this.isModified('timeText') || !this.scheduledAt) {
+    const { parseBookingDateTime } = require('../utils/dateTime');
+    this.scheduledAt = parseBookingDateTime(this.dateText, this.timeText);
+  }
+});
 
 module.exports = mongoose.model('Booking', bookingSchema);
