@@ -129,8 +129,9 @@ export default function BookSessionScreen({ route, navigation }: any) {
           timeText: selectedTime,
           price: displayPrice,
         }).unwrap();
-      } catch (e) {
-        console.log('Backend createBooking sync fallback:', e);
+      } catch (e: any) {
+        Alert.alert('Unable to book', e?.data?.message || 'Please try again.');
+        return;
       }
       dispatch(
         confirmBooking({
