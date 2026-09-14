@@ -26,6 +26,7 @@ export default function BookSessionScreen({ route, navigation }: any) {
   const [createBookingMutation] = useCreateBookingMutation();
   const [createRazorpayOrderMutation] = useCreateRazorpayOrderMutation();
   const [verifyRazorpayPaymentMutation] = useVerifyRazorpayPaymentMutation();
+  const currentUser = useAppSelector((state) => state.auth.user);
 
   const counsellor = route?.params?.counsellor || {
     name: 'Aisha',
@@ -119,7 +120,10 @@ export default function BookSessionScreen({ route, navigation }: any) {
     if (displayPrice === 'Free') {
       try {
         await createBookingMutation({
+          counsellorId: counsellor._id,
           counsellorName: counsellor.name || counsellor.fullName,
+          clientPhone: currentUser?.phone,
+          clientName: currentUser?.name,
           sessionType,
           dateText: selectedDateItem.fullDateText,
           timeText: selectedTime,
@@ -195,7 +199,10 @@ export default function BookSessionScreen({ route, navigation }: any) {
         razorpay_order_id: razorpayOrderInfo.orderId,
         razorpay_payment_id: paymentId,
         razorpay_signature: signature,
+        counsellorId: counsellor._id,
         counsellorName: counsellor.name || counsellor.fullName,
+        clientPhone: currentUser?.phone,
+        clientName: currentUser?.name,
         sessionType,
         dateText: selectedDateItem.fullDateText,
         timeText: selectedTime,
