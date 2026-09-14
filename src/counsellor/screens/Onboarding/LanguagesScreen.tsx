@@ -6,12 +6,15 @@ import { colors, fonts } from '../../theme';
 import ArrowLeftIcon from '../../../shared/assets/icons/back-icon.svg';
 import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
+import { useAppDispatch } from '../../../shared/store';
+import { setOnboardingLanguages } from '../../../shared/store/counsellorOnboardingSlice';
 
 export default function LanguagesScreen({ navigation }: any) {
+  const dispatch = useAppDispatch();
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
 
   const languages = [
-    'Malayalam', 'English', 'Hindi', 
+    'Malayalam', 'English', 'Hindi',
     'Arabic', 'Tamil', 'Urdu'
   ];
 
@@ -21,6 +24,11 @@ export default function LanguagesScreen({ navigation }: any) {
     } else {
       setSelectedLanguages([...selectedLanguages, lang]);
     }
+  };
+
+  const handleContinue = () => {
+    dispatch(setOnboardingLanguages(selectedLanguages));
+    navigation.navigate('AreasOfFocus');
   };
 
   return (
@@ -61,8 +69,8 @@ export default function LanguagesScreen({ navigation }: any) {
 
         <View style={styles.footer}>
           <CustomButton 
-            title="Continue" 
-            onPress={() => navigation.navigate('AreasOfFocus')} 
+            title="Continue"
+            onPress={handleContinue}
             disabled={selectedLanguages.length === 0}
           />
         </View>

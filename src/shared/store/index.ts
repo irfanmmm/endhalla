@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import authReducer from './authSlice';
 import bookingReducer from './bookingSlice';
+import counsellorOnboardingReducer from './counsellorOnboardingSlice';
 import { clientApi } from './api/clientApi';
 import { counsellorApi } from './api/counsellorApi';
 
@@ -9,6 +10,7 @@ export const store = configureStore({
   reducer: {
     auth: authReducer,
     booking: bookingReducer,
+    counsellorOnboarding: counsellorOnboardingReducer,
     [clientApi.reducerPath]: clientApi.reducer,
     [counsellorApi.reducerPath]: counsellorApi.reducer,
   },

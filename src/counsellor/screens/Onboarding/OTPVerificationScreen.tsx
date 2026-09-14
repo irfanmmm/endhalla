@@ -9,6 +9,7 @@ import CustomButton from '../../../shared/components/CustomButton';
 import OTPInput from '../../../shared/components/OTPInput';
 import { useAppDispatch } from '../../../shared/store';
 import { loginUser } from '../../../shared/store/authSlice';
+import { setOnboardingPhone } from '../../../shared/store/counsellorOnboardingSlice';
 import { useVerifyCounsellorOTPMutation } from '../../../shared/store/api/counsellorApi';
 
 export default function OTPVerificationScreen({ route, navigation }: any) {
@@ -35,6 +36,7 @@ export default function OTPVerificationScreen({ route, navigation }: any) {
       if (result.counsellor?.isOnboardingComplete) {
         navigation.reset({ index: 0, routes: [{ name: 'CounsellorDashboard' }] });
       } else {
+        dispatch(setOnboardingPhone(phone));
         navigation.navigate('FullName', { phone });
       }
     } catch (e: any) {
@@ -62,7 +64,7 @@ export default function OTPVerificationScreen({ route, navigation }: any) {
             <Text style={styles.subtitle}>Sent to your number via SMS.</Text>
 
             <OTPInput value={code} onChange={handleCodeChange} hasError={!!error} />
-            
+
             {!!error && (
               <Text style={styles.errorText}>{error}</Text>
             )}

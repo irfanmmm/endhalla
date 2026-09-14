@@ -6,8 +6,11 @@ import { colors, fonts } from '../../theme';
 import ArrowLeftIcon from '../../../shared/assets/icons/back-icon.svg';
 import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
+import { useAppDispatch } from '../../../shared/store';
+import { setOnboardingAreasOfFocus } from '../../../shared/store/counsellorOnboardingSlice';
 
 export default function AreasOfFocusScreen({ navigation }: any) {
+  const dispatch = useAppDispatch();
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
   const areas = [
@@ -22,6 +25,11 @@ export default function AreasOfFocusScreen({ navigation }: any) {
     } else {
       setSelectedAreas([...selectedAreas, area]);
     }
+  };
+
+  const handleContinue = () => {
+    dispatch(setOnboardingAreasOfFocus(selectedAreas));
+    navigation.navigate('Certificates');
   };
 
   return (
@@ -62,8 +70,8 @@ export default function AreasOfFocusScreen({ navigation }: any) {
 
         <View style={styles.footer}>
           <CustomButton 
-            title="Continue" 
-            onPress={() => navigation.navigate('Certificates')} 
+            title="Continue"
+            onPress={handleContinue}
             disabled={selectedAreas.length === 0}
           />
         </View>

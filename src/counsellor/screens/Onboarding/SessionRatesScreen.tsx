@@ -6,8 +6,11 @@ import { colors, fonts } from '../../theme';
 import ArrowLeftIcon from '../../../shared/assets/icons/back-icon.svg';
 import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
+import { useAppDispatch } from '../../../shared/store';
+import { setOnboardingRates } from '../../../shared/store/counsellorOnboardingSlice';
 
 export default function SessionRatesScreen({ navigation }: any) {
+  const dispatch = useAppDispatch();
   const [selectedRate, setSelectedRate] = useState<string | null>('700');
   const [offerFreeSession, setOfferFreeSession] = useState<boolean>(true);
 
@@ -18,6 +21,13 @@ export default function SessionRatesScreen({ navigation }: any) {
   };
 
   const isContinueEnabled = selectedRate !== null;
+
+  const handleContinue = () => {
+    if (!selectedRate) return;
+    const rate = Number(selectedRate);
+    dispatch(setOnboardingRates({ chat: rate, voice: rate, video: rate }));
+    navigation.navigate('Languages');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -77,8 +87,8 @@ export default function SessionRatesScreen({ navigation }: any) {
 
         <View style={styles.footer}>
           <CustomButton 
-            title="Continue" 
-            onPress={() => navigation.navigate('Languages')} 
+            title="Continue"
+            onPress={handleContinue}
             disabled={!isContinueEnabled}
           />
         </View>

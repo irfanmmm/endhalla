@@ -7,6 +7,9 @@ import ArrowLeftIcon from '../../../shared/assets/icons/back-icon.svg';
 import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
 import Svg, { Path, Polyline, Line, Circle } from 'react-native-svg';
+import { useAppDispatch, useAppSelector } from '../../../shared/store';
+import { setOnboardingCertificates, resetOnboarding } from '../../../shared/store/counsellorOnboardingSlice';
+import { useCompleteOnboardingMutation } from '../../../shared/store/api/counsellorApi';
 
 // Custom Icons
 const ShieldBadgeIcon = () => (
@@ -37,8 +40,13 @@ const UploadCircleIcon = () => (
 );
 
 export default function CertificatesScreen({ navigation }: any) {
+  const dispatch = useAppDispatch();
+  const onboarding = useAppSelector((state) => state.counsellorOnboarding);
+  const [completeOnboarding, { isLoading }] = useCompleteOnboardingMutation();
+
   // Simulating uploaded files state
   const [uploaded, setUploaded] = useState<{ [key: string]: boolean }>({});
+  const [error, setError] = useState('');
 
   const docs = [
     { id: 'degree', label: 'Counselling /\nPsychology Degree' },
@@ -53,6 +61,27 @@ export default function CertificatesScreen({ navigation }: any) {
   };
 
   const isAtLeastOneUploaded = Object.keys(uploaded).length > 0;
+
+  const handleSubmit = async (certificates: string[]) => {
+    setError('');
+    try {
+      await completeOnboarding({
+        phone: onboarding.phone,
+        fullName: onboarding.fullName,
+        gender: onboarding.gender,
+        experienceYears: onboarding.experienceYears,
+        languages: onboarding.languages,
+        rates: onboarding.rates,
+        areasOfFocus: onboarding.areasOfFocus,
+        certificates,
+      }).unwrap();
+      dispatch(setOnboardingCertificates(certificates));
+      dispatch(resetOnboarding());
+      navigation.navigate('Success');
+    } catch (e: any) {
+      setError(e?.data?.message || 'Something went wrong submitting your profile. Please try again.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -107,16 +136,18 @@ export default function CertificatesScreen({ navigation }: any) {
           </View>
 
           <Text style={styles.formatsText}>Accepted formats: PDF, JPG, PNG · Max 5 MB per file</Text>
+
+          {!!error && <Text style={styles.errorText}>{error}</Text>}
         </ScrollView>
 
         <View style={styles.footer}>
-          <CustomButton 
-            title="Submit for verification" 
-            onPress={() => navigation.navigate('Success')} 
+          <CustomButton
+            title="Submit for verification"
+            onPress={() => handleSubmit(Object.keys(uploaded))}
             style={{ backgroundColor: isAtLeastOneUploaded ? colors.primary : '#D1D1D6' }}
-            disabled={!isAtLeastOneUploaded}
+            disabled={!isAtLeastOneUploaded || isLoading}
           />
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Success')}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => handleSubmit([])} disabled={isLoading}>
             <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A7870" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}>
               <Circle cx="12" cy="12" r="10"></Circle>
               <Polyline points="12 6 12 12 16 14"></Polyline>
@@ -209,6 +240,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans.regular,
     color: colors.textSecondary,
     textAlign: 'left',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: px(14),
+    fontFamily: fonts.sans.medium,
+    marginBottom: px(16),
   },
   footer: {
     paddingHorizontal: px(24),

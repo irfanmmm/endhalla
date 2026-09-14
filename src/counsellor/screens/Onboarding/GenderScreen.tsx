@@ -6,6 +6,8 @@ import { colors, fonts } from '../../theme';
 import ArrowLeftIcon from '../../../shared/assets/icons/back-icon.svg';
 import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
+import { useAppDispatch } from '../../../shared/store';
+import { setOnboardingGender } from '../../../shared/store/counsellorOnboardingSlice';
 // Simulating the checkmark
 const CheckIcon = ({ color }: { color: string }) => (
   <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: color, justifyContent: 'center', alignItems: 'center' }}>
@@ -14,12 +16,19 @@ const CheckIcon = ({ color }: { color: string }) => (
 );
 
 export default function GenderScreen({ navigation }: any) {
+  const dispatch = useAppDispatch();
   const [selected, setSelected] = useState<string | null>(null);
 
   const options = [
     { id: 'Female', label: 'Female', icon: '👩' },
     { id: 'Male', label: 'Male', icon: '👨' },
   ];
+
+  const handleContinue = () => {
+    if (!selected) return;
+    dispatch(setOnboardingGender(selected));
+    navigation.navigate('Experience');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -61,8 +70,8 @@ export default function GenderScreen({ navigation }: any) {
 
         <View style={styles.footer}>
           <CustomButton 
-            title="Continue" 
-            onPress={() => navigation.navigate('Experience')} 
+            title="Continue"
+            onPress={handleContinue}
             disabled={!selected}
           />
         </View>

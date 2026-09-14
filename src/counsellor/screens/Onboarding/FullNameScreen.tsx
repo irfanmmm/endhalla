@@ -8,10 +8,18 @@ import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
 import CustomInput from '../../../shared/components/CustomInput';
 import { validateName } from '../../../shared/utils/validation';
+import { useAppDispatch } from '../../../shared/store';
+import { setOnboardingFullName } from '../../../shared/store/counsellorOnboardingSlice';
 
 export default function FullNameScreen({ navigation }: any) {
+  const dispatch = useAppDispatch();
   const [name, setName] = useState('');
   const isValid = validateName(name);
+
+  const handleContinue = () => {
+    dispatch(setOnboardingFullName(name.trim()));
+    navigation.navigate('Gender');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -46,7 +54,7 @@ export default function FullNameScreen({ navigation }: any) {
             <CustomButton
               title="Continue"
               disabled={!isValid}
-              onPress={() => navigation.navigate('Gender')}
+              onPress={handleContinue}
             />
           </View>
         </KeyboardAvoidingView>

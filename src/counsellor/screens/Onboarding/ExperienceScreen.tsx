@@ -6,6 +6,16 @@ import { colors, fonts } from '../../theme';
 import ArrowLeftIcon from '../../../shared/assets/icons/back-icon.svg';
 import ProgressBar from '../../../shared/components/ProgressBar';
 import CustomButton from '../../../shared/components/CustomButton';
+import { useAppDispatch } from '../../../shared/store';
+import { setOnboardingExperienceYears } from '../../../shared/store/counsellorOnboardingSlice';
+
+const EXPERIENCE_YEARS: Record<string, number> = {
+  'Less than 1 year': 0,
+  '1 – 2 years': 1,
+  '3 – 5 years': 3,
+  '6 – 10 years': 6,
+  '10+ years': 10,
+};
 
 const CheckIcon = ({ color }: { color: string }) => (
   <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: color, justifyContent: 'center', alignItems: 'center' }}>
@@ -14,6 +24,7 @@ const CheckIcon = ({ color }: { color: string }) => (
 );
 
 export default function ExperienceScreen({ navigation }: any) {
+  const dispatch = useAppDispatch();
   const [selected, setSelected] = useState<string | null>(null);
 
   const options = [
@@ -23,6 +34,12 @@ export default function ExperienceScreen({ navigation }: any) {
     '6 – 10 years',
     '10+ years',
   ];
+
+  const handleContinue = () => {
+    if (!selected) return;
+    dispatch(setOnboardingExperienceYears(EXPERIENCE_YEARS[selected] ?? 0));
+    navigation.navigate('SessionRates');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -61,8 +78,8 @@ export default function ExperienceScreen({ navigation }: any) {
 
         <View style={styles.footer}>
           <CustomButton 
-            title="Continue" 
-            onPress={() => navigation.navigate('SessionRates')} 
+            title="Continue"
+            onPress={handleContinue}
             disabled={!selected}
           />
         </View>
