@@ -17,6 +17,24 @@ function ringtoneUrl(): string {
 export function startIncomingCallRingtone(): void {
   stopIncomingCallRingtone();
 
+  // Sound.setCategory is global/static, not per-instance — 'Ring' routes
+  // playback through Android's STREAM_RING (the actual ringer volume a
+  // real incoming call uses) instead of the default STREAM_MUSIC (the
+  // media volume slider, which has nothing to do with calls and may be
+  // turned down independently). Restored to 'Playback' on stop so it
+  // doesn't leak into unrelated sound playback elsewhere in the app (e.g.
+  // counsellor voice notes).
+  try {
+    // 'Ring' is an Android-only category (maps to STREAM_RING natively —
+    // see node_modules/react-native-sound's Sound.kt) that the library's
+    // TS types don't declare, since they're modeled on iOS's
+    // AVAudioSessionCategory. This module is Android-only (see the
+    // Platform.OS guard in incomingCallNotification.ts's caller).
+    Sound.setCategory('Ring' as Parameters<typeof Sound.setCategory>[0]);
+  } catch (e) {
+    console.error('Sound.setCategory(Ring) failed:', e);
+  }
+
   const sound = new Sound(ringtoneUrl(), '', (error) => {
     if (error) {
       console.error('Failed to load ringtone:', error);
@@ -43,5 +61,10 @@ export function stopIncomingCallRingtone(): void {
     sound.stop(() => sound.release());
   } catch (e) {
     // already released/invalid — nothing to clean up
+  }
+  try {
+    Sound.setCategory('Playback');
+  } catch (e) {
+    console.error('Sound.setCategory(Playback) restore failed:', e);
   }
 }
