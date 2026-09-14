@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import notifee, { AndroidCategory, AndroidImportance, AndroidVisibility, Event, EventType } from '@notifee/react-native';
-import { CALLS_CHANNEL_ID } from './notificationChannels';
+import { CALLS_CHANNEL_ID, setupNotificationChannels } from './notificationChannels';
 
 export interface IncomingCallData {
   bookingId: string;
@@ -17,6 +17,11 @@ export interface IncomingCallData {
  */
 export async function displayIncomingCallNotification({ bookingId, callerName }: IncomingCallData): Promise<void> {
   if (Platform.OS !== 'android') return;
+
+  // Usually already created by App.tsx's mount effect, but this can run
+  // from a pure background/headless boot (no Activity/UI ever mounted) —
+  // createChannel is idempotent, so ensure it here too rather than assume.
+  await setupNotificationChannels();
 
   await notifee.displayNotification({
     title: 'Incoming video call',
