@@ -20,6 +20,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<Channel | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function ChatScreen({ route, navigation }: any) {
     let cancelled = false;
 
     (async () => {
+      setError(null);
       try {
         const client = await connectChatUser(chatToken);
         const ch = client.channel('messaging', channelId);
@@ -41,8 +43,9 @@ export default function ChatScreen({ route, navigation }: any) {
           setMessages([...ch.state.messages]);
         });
         unsubscribe = () => sub.unsubscribe();
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to open chat channel:', err);
+        if (!cancelled) setError(err?.message || 'Failed to open chat. Please try again.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -64,6 +67,17 @@ export default function ChatScreen({ route, navigation }: any) {
       console.error('Failed to send message:', err);
     }
   }, [text]);
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.errorBackButton}>
+          <Text style={styles.errorBackText}>Go back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   if (loading || !channel) {
     return (
@@ -123,7 +137,10 @@ export default function ChatScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9F8F5' },
-  centered: { flex: 1, backgroundColor: '#F9F8F5', alignItems: 'center', justifyContent: 'center' },
+  centered: { flex: 1, backgroundColor: '#F9F8F5', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  errorText: { color: '#1A1A1A', fontSize: 15, textAlign: 'center', marginBottom: 16 },
+  errorBackButton: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#0F9D8C', borderRadius: 20 },
+  errorBackText: { color: '#fff', fontWeight: '600' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

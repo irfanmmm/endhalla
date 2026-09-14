@@ -25,10 +25,12 @@ function getOtherMember(channel: Channel, myUserId: string) {
 export default function ChatListScreen({ chatToken, navigation }: ChatListScreenProps) {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadChannels = useCallback(async () => {
     if (!chatToken) return;
     setLoading(true);
+    setError(null);
     try {
       const client = await connectChatUser(chatToken);
       const result = await client.queryChannels(
@@ -36,8 +38,9 @@ export default function ChatListScreen({ chatToken, navigation }: ChatListScreen
         [{ last_message_at: -1 }],
       );
       setChannels(result);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load chat channels:', err);
+      setError(err?.message || 'Failed to load messages. Pull to retry.');
     } finally {
       setLoading(false);
     }
@@ -47,10 +50,21 @@ export default function ChatListScreen({ chatToken, navigation }: ChatListScreen
     loadChannels();
   }, [loadChannels]);
 
-  if (!chatToken || loading) {
+  if (!chatToken || (loading && channels.length === 0 && !error)) {
     return (
       <SafeAreaView style={styles.centered}>
         <ActivityIndicator color="#0F9D8C" />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.centered}>
+        <Text style={styles.emptyText}>{error}</Text>
+        <TouchableOpacity onPress={loadChannels} style={styles.retryButton}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -112,6 +126,8 @@ const styles = StyleSheet.create({
   },
   list: { paddingHorizontal: 20, paddingBottom: 30 },
   emptyText: { color: '#7A7870', textAlign: 'center', marginTop: 40 },
+  retryButton: { marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#0F9D8C', borderRadius: 20 },
+  retryText: { color: '#fff', fontWeight: '600' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

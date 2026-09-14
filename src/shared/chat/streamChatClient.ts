@@ -29,6 +29,10 @@ export async function connectChatUser({
   if (connectedUserId === userId) {
     return chatClient;
   }
+  if (connectedUserId) {
+    await chatClient.disconnectUser();
+    connectedUserId = null;
+  }
   await chatClient.connectUser({ id: userId, name: userName }, token);
   connectedUserId = userId;
   return chatClient;
