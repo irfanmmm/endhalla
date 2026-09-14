@@ -23,6 +23,7 @@ export interface CreateBookingRequest {
   clientName?: string;
   sessionType: 'Chat' | 'Voice' | 'Video';
   dateText: string;
+  dateISO?: string;
   timeText: string;
   price: string | number;
   notes?: string;
@@ -198,6 +199,7 @@ export const clientApi = createApi({
       clientName?: string;
       sessionType: 'Chat' | 'Voice' | 'Video';
       dateText: string;
+      dateISO?: string;
       timeText: string;
       price: string | number;
       notes?: string;

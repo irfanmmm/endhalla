@@ -126,6 +126,7 @@ export default function BookSessionScreen({ route, navigation }: any) {
           clientName: currentUser?.name,
           sessionType,
           dateText: selectedDateItem.fullDateText,
+          dateISO: selectedDateItem.id,
           timeText: selectedTime,
           price: displayPrice,
         }).unwrap();
@@ -206,6 +207,7 @@ export default function BookSessionScreen({ route, navigation }: any) {
         clientName: currentUser?.name,
         sessionType,
         dateText: selectedDateItem.fullDateText,
+        dateISO: selectedDateItem.id,
         timeText: selectedTime,
         price: displayPrice,
       }).unwrap();

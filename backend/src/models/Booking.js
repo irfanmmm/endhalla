@@ -30,6 +30,12 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // Machine-parseable "YYYY-MM-DD" form of dateText, used to compute
+    // scheduledAt. dateText itself is a display string (e.g. "Tue, 1 Sep")
+    // and is never reliably parseable on its own.
+    dateISO: {
+      type: String,
+    },
     timeText: {
       type: String,
       required: true,
@@ -90,9 +96,9 @@ const bookingSchema = new mongoose.Schema(
 );
 
 bookingSchema.pre('save', function () {
-  if (this.isModified('dateText') || this.isModified('timeText') || !this.scheduledAt) {
+  if (this.isModified('dateISO') || this.isModified('dateText') || this.isModified('timeText') || !this.scheduledAt) {
     const { parseBookingDateTime } = require('../utils/dateTime');
-    this.scheduledAt = parseBookingDateTime(this.dateText, this.timeText);
+    this.scheduledAt = parseBookingDateTime(this.dateISO || this.dateText, this.timeText);
   }
 });
 
