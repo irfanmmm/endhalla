@@ -32,7 +32,11 @@ export default function OTPVerificationScreen({ route, navigation }: any) {
           user: result.user,
         })
       );
-      navigation.navigate('FullName', { phone });
+      if (result.counsellor?.isOnboardingComplete) {
+        navigation.reset({ index: 0, routes: [{ name: 'CounsellorDashboard' }] });
+      } else {
+        navigation.navigate('FullName', { phone });
+      }
     } catch (e: any) {
       setError(e?.data?.message || 'Invalid verification code. Please try again.');
       setCode('');
