@@ -7,7 +7,7 @@ import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebas
 import notifee from '@notifee/react-native';
 import App from './src/client/App';
 import { name as appName } from './app.json';
-import { displayIncomingCallNotification, handleIncomingCallDecline } from './src/shared/utils/incomingCallNotification';
+import { displayIncomingCallNotification, handleIncomingCallNotificationEvent } from './src/shared/utils/incomingCallNotification';
 
 // Must be registered at the top level, outside any component — handles
 // data-only messages while the app is backgrounded/killed. Incoming calls
@@ -31,8 +31,9 @@ setBackgroundMessageHandler(getMessaging(), async (remoteMessage) => {
   }
 });
 
-// Also top-level: the Decline action must dismiss the call notification
-// even while the app is backgrounded or fully killed, with no UI involved.
-notifee.onBackgroundEvent(handleIncomingCallDecline);
+// Also top-level: Decline/dismiss/answer must stop the ringtone and dismiss
+// the call notification even while the app is backgrounded or fully
+// killed, with no UI involved.
+notifee.onBackgroundEvent(handleIncomingCallNotificationEvent);
 
 AppRegistry.registerComponent(appName, () => App);

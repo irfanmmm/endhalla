@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import notifee, { AndroidCategory, AndroidImportance, AndroidVisibility, Event, EventType } from '@notifee/react-native';
 import { CALLS_CHANNEL_ID, setupNotificationChannels } from './notificationChannels';
+import { startIncomingCallRingtone, stopIncomingCallRingtone } from './incomingCallRingtone';
 
 export interface IncomingCallData {
   bookingId: string;
@@ -13,7 +14,9 @@ export interface IncomingCallData {
  * locked — the same mechanism WhatsApp/Signal use (AndroidCategory.CALL +
  * fullScreenAction on a HIGH-importance channel). Works from any JS context
  * that can run notifee, including the background message handler while the
- * app is fully killed.
+ * app is fully killed. Also starts a continuous looping ringtone, since a
+ * plain notification sound only plays once — call
+ * stopIncomingCallRingtone()/handleIncomingCallNotificationEvent to stop it.
  */
 export async function displayIncomingCallNotification({ bookingId, callerName }: IncomingCallData): Promise<void> {
   if (Platform.OS !== 'android') return;
@@ -22,6 +25,8 @@ export async function displayIncomingCallNotification({ bookingId, callerName }:
   // from a pure background/headless boot (no Activity/UI ever mounted) —
   // createChannel is idempotent, so ensure it here too rather than assume.
   await setupNotificationChannels();
+
+  startIncomingCallRingtone();
 
   await notifee.displayNotification({
     title: 'Incoming video call',
@@ -55,12 +60,23 @@ export async function clearIncomingCallNotifications(): Promise<void> {
 }
 
 /**
- * Handles a Decline tap on an incoming-call notification — the one action
- * that must work headless, with no app UI involved, while the app is
- * backgrounded or fully killed.
+ * Stops the ringtone for any event that means the call is no longer
+ * "incoming and unanswered": Decline, Answer, the user tapping the
+ * notification body, swiping it away, or it auto-timing out. Must work
+ * headless (Decline in particular needs no app UI involved at all), and is
+ * safe to call from both notifee.onForegroundEvent and onBackgroundEvent.
  */
-export async function handleIncomingCallDecline({ type, detail }: Event): Promise<void> {
+export async function handleIncomingCallNotificationEvent({ type, detail }: Event): Promise<void> {
   if (type === EventType.ACTION_PRESS && detail.pressAction?.id === 'decline' && detail.notification?.id) {
     await notifee.cancelNotification(detail.notification.id);
+    stopIncomingCallRingtone();
+    return;
+  }
+  if (
+    type === EventType.DISMISSED ||
+    type === EventType.PRESS ||
+    (type === EventType.ACTION_PRESS && detail.pressAction?.id === 'answer')
+  ) {
+    stopIncomingCallRingtone();
   }
 }

@@ -15,8 +15,9 @@ import { connectChatUser } from '../chat/streamChatClient';
 import {
   displayIncomingCallNotification,
   clearIncomingCallNotifications,
-  handleIncomingCallDecline,
+  handleIncomingCallNotificationEvent,
 } from './incomingCallNotification';
+import { stopIncomingCallRingtone } from './incomingCallRingtone';
 
 interface ChatTokenData {
   apiKey: string;
@@ -125,13 +126,11 @@ export function usePushNotifications({
     // (i.e. incoming calls) — separate event system from the FCM-displayed
     // ones above.
     const handleNotifeeEvent = ({ type, detail }: Event) => {
+      handleIncomingCallNotificationEvent({ type, detail });
+
       const data = detail.notification?.data as Record<string, string> | undefined;
       if (!data) return;
 
-      if (type === EventType.ACTION_PRESS && detail.pressAction?.id === 'decline') {
-        handleIncomingCallDecline({ type, detail });
-        return;
-      }
       if (
         type === EventType.PRESS ||
         (type === EventType.ACTION_PRESS && detail.pressAction?.id === 'answer')
@@ -149,6 +148,7 @@ export function usePushNotifications({
       const data = initial?.notification?.data as Record<string, string> | undefined;
       if (data) {
         clearIncomingCallNotifications();
+        stopIncomingCallRingtone();
         onNotificationTap?.(data);
       }
     });
