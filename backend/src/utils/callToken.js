@@ -13,10 +13,13 @@ async function notifyClientOfIncomingCall(booking, counsellorName) {
 
     await sendPushNotification({
       token: clientUser.pushToken,
-      title: 'Incoming video call',
-      body: `${counsellorName || 'Your counsellor'} is calling you now.`,
-      data: { type: 'incoming_call', bookingId: String(booking._id) },
+      data: {
+        type: 'incoming_call',
+        bookingId: String(booking._id),
+        callerName: counsellorName || 'Your counsellor',
+      },
       androidChannelId: 'calls',
+      dataOnly: true,
     });
   } catch (error) {
     console.error('Failed to notify client of incoming call:', error.message);

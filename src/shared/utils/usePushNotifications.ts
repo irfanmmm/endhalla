@@ -10,7 +10,13 @@ import {
   getInitialNotification,
   AuthorizationStatus,
 } from '@react-native-firebase/messaging';
+import notifee, { Event, EventType } from '@notifee/react-native';
 import { connectChatUser } from '../chat/streamChatClient';
+import {
+  displayIncomingCallNotification,
+  clearIncomingCallNotifications,
+  handleIncomingCallDecline,
+} from './incomingCallNotification';
 
 interface ChatTokenData {
   apiKey: string;
@@ -37,6 +43,7 @@ async function requestPermission(messagingInstance: ReturnType<typeof getMessagi
     );
     if (granted !== PermissionsAndroid.RESULTS.GRANTED) return false;
   }
+  await notifee.requestPermission();
   const authStatus = await requestMessagingPermission(messagingInstance);
   return (
     authStatus === AuthorizationStatus.AUTHORIZED ||
@@ -84,19 +91,23 @@ export function usePushNotifications({
       );
     });
 
+    // Incoming calls are sent data-only (see backend/src/utils/callToken.js)
+    // and build their own full-screen-capable notification via notifee —
+    // see incomingCallNotification.ts. Everything else still uses a plain
+    // `notification` payload the OS displays on its own.
     const unsubscribeForeground = onMessage(messagingInstance, async (remoteMessage) => {
-      const title = remoteMessage.notification?.title || 'Endhalla';
-      const body = remoteMessage.notification?.body || '';
       const data = remoteMessage.data as Record<string, string> | undefined;
 
       if (data?.type === 'incoming_call') {
-        Alert.alert(title, body, [
-          { text: 'Decline', style: 'cancel' },
-          { text: 'Answer', onPress: () => onNotificationTap?.(data) },
-        ]);
+        await displayIncomingCallNotification({
+          bookingId: data.bookingId,
+          callerName: data.callerName || 'Your counsellor',
+        });
         return;
       }
 
+      const title = remoteMessage.notification?.title || 'Endhalla';
+      const body = remoteMessage.notification?.body || '';
       if (body) Alert.alert(title, body);
     });
 
@@ -110,10 +121,43 @@ export function usePushNotifications({
       }
     });
 
+    // notifee handles taps/actions on the notifications *it* displayed
+    // (i.e. incoming calls) — separate event system from the FCM-displayed
+    // ones above.
+    const handleNotifeeEvent = ({ type, detail }: Event) => {
+      const data = detail.notification?.data as Record<string, string> | undefined;
+      if (!data) return;
+
+      if (type === EventType.ACTION_PRESS && detail.pressAction?.id === 'decline') {
+        handleIncomingCallDecline({ type, detail });
+        return;
+      }
+      if (
+        type === EventType.PRESS ||
+        (type === EventType.ACTION_PRESS && detail.pressAction?.id === 'answer')
+      ) {
+        onNotificationTap?.(data);
+      }
+    };
+
+    // notifee.onBackgroundEvent is registered separately at the app entry
+    // point (index.client.js) — it must be a top-level registration to fire
+    // while the app is killed, not something tied to this hook's lifecycle.
+    const unsubscribeNotifeeForeground = notifee.onForegroundEvent(handleNotifeeEvent);
+
+    notifee.getInitialNotification().then((initial) => {
+      const data = initial?.notification?.data as Record<string, string> | undefined;
+      if (data) {
+        clearIncomingCallNotifications();
+        onNotificationTap?.(data);
+      }
+    });
+
     return () => {
       unsubscribeRefresh();
       unsubscribeForeground();
       unsubscribeOpened();
+      unsubscribeNotifeeForeground();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
