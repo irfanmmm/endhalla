@@ -25,9 +25,19 @@ function mintChatToken({ requesterUserId, requesterName }) {
  * before they can be added to a channel, so both users are upserted first.
  */
 async function provisionChatChannel({ clientUser, counsellorUser }) {
-  const client = getStreamClient();
   const clientUserId = String(clientUser.id);
   const counsellorUserId = String(counsellorUser.id);
+
+  if (clientUserId === counsellorUserId) {
+    // Same phone number is registered as both the client and the counsellor
+    // (e.g. testing both apps with one number) — Stream rejects a channel
+    // with a duplicate member, so fail with a clear message instead.
+    const error = new Error('Client and counsellor accounts are the same user — cannot start a chat with yourself');
+    error.status = 400;
+    throw error;
+  }
+
+  const client = getStreamClient();
   const ids = [clientUserId, counsellorUserId].sort();
   const channelId = `chat-${ids.join('_')}`;
 

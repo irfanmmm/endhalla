@@ -267,6 +267,9 @@ exports.getChatChannel = async (req, res) => {
 
     return res.status(200).json({ success: true, ...result });
   } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
+    }
     console.error('Error in getChatChannel:', error);
     return res.status(500).json({ success: false, message: 'Server error provisioning chat channel', error: error.message });
   }
