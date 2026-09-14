@@ -34,7 +34,11 @@ export async function displayIncomingCallNotification({ bookingId, callerName }:
       pressAction: { id: 'default' },
       actions: [
         { title: 'Decline', pressAction: { id: 'decline' } },
-        { title: 'Answer', pressAction: { id: 'answer' } },
+        // Only 'default' auto-launches the app — any other action id needs
+        // launchActivity set explicitly, or the tap fires the event and
+        // does nothing visible (silently closes a transparent bridge
+        // activity without ever opening MainActivity).
+        { title: 'Answer', pressAction: { id: 'answer', launchActivity: 'default' } },
       ],
     },
   });
