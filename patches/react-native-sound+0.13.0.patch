@@ -15,3 +15,30 @@ index 1432387..bf96269 100644
  
    # Use install_modules_dependencies helper to install the dependencies if React Native version >=0.71.0.
    # See https://github.com/facebook/react-native/blob/febf6b7f33fdb4904669f99d795eba4c0f95d7bf/scripts/cocoapods/new_architecture.rb#L79.
+diff --git a/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/Sound.kt b/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/Sound.kt
+index 749ea14..ab0a1a8 100644
+--- a/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/Sound.kt
++++ b/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/Sound.kt
+@@ -202,7 +202,21 @@ open class Sound internal constructor(context:ReactApplicationContext):AudioMana
+     if (!this.mixWithOthers) {
+       val audioManager = reactContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+ 
+-      audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
++      // Was hardcoded to STREAM_MUSIC regardless of setCategory() — meaning
++      // e.g. category "Ring" correctly routed *playback* through
++      // STREAM_RING (see prepare()'s setAudioStreamType) but requested
++      // focus on STREAM_MUSIC, a stream/focus mismatch that can cause the
++      // OS to suppress or misroute playback. Derive it from the same
++      // category mapping prepare() already uses.
++      val focusStreamType = when (this.category) {
++        "Ambient" -> AudioManager.STREAM_NOTIFICATION
++        "System" -> AudioManager.STREAM_SYSTEM
++        "Voice" -> AudioManager.STREAM_VOICE_CALL
++        "Ring" -> AudioManager.STREAM_RING
++        "Alarm" -> AudioManager.STREAM_ALARM
++        else -> AudioManager.STREAM_MUSIC
++      }
++      audioManager.requestAudioFocus(this, focusStreamType, AudioManager.AUDIOFOCUS_GAIN)
+ 
+       this.focusedPlayerKey = key
+     }
