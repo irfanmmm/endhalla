@@ -2,16 +2,45 @@ import Sound from 'react-native-sound';
 import { getClientBaseUrl } from './config';
 
 // A plain Android/iOS notification sound plays once — it cannot loop like a
-// real incoming call. This plays a dedicated ringtone file on a continuous
-// loop for as long as a call is incoming, independent of the notification
-// itself. Safe to call from the background push handler too: unlike Fabric
-// UI work (see notificationChannels.ts's history), audio playback via
-// react-native-sound doesn't touch a rendered surface.
+// real incoming call. This plays the device's own default ringtone on a
+// continuous loop for as long as a call is incoming, independent of the
+// notification itself. Safe to call from the background push handler too:
+// unlike Fabric UI work (see notificationChannels.ts's history), audio
+// playback via react-native-sound doesn't touch a rendered surface.
 let ringtoneSound: Sound | null = null;
 
-function ringtoneUrl(): string {
+// The same standard Android Settings URI pattern the app's notification
+// channel already uses for its own sound (content://settings/system/
+// notification_sound) — this one always resolves to whatever the user has
+// currently set as their default ringtone. Needs the content:// handling
+// patched into react-native-sound's native code (see patches/) since the
+// library doesn't support it out of the box.
+const DEVICE_DEFAULT_RINGTONE_URI = 'content://settings/system/ringtone';
+
+function fallbackRingtoneUrl(): string {
   const base = getClientBaseUrl().replace(/\/api\/?$/, '');
   return `${base}/public/ringtone.wav`;
+}
+
+function playFrom(url: string, onError?: () => void): void {
+  const sound = new Sound(url, '', (error) => {
+    if (error) {
+      console.error(`Failed to load ringtone from ${url}:`, error);
+      if (ringtoneSound === sound) ringtoneSound = null;
+      onError?.();
+      return;
+    }
+    if (ringtoneSound !== sound) {
+      // stopIncomingCallRingtone() already ran again before this loaded
+      sound.release();
+      return;
+    }
+    sound.setNumberOfLoops(-1);
+    sound.play((success) => {
+      if (!success) console.error('Ringtone playback failed');
+    });
+  });
+  ringtoneSound = sound;
 }
 
 export function startIncomingCallRingtone(): void {
@@ -35,22 +64,9 @@ export function startIncomingCallRingtone(): void {
     console.error('Sound.setCategory(Ring) failed:', e);
   }
 
-  const sound = new Sound(ringtoneUrl(), '', (error) => {
-    if (error) {
-      console.error('Failed to load ringtone:', error);
-      return;
-    }
-    if (ringtoneSound !== sound) {
-      // stopIncomingCallRingtone() already ran again before this loaded
-      sound.release();
-      return;
-    }
-    sound.setNumberOfLoops(-1);
-    sound.play((success) => {
-      if (!success) console.error('Ringtone playback failed');
-    });
-  });
-  ringtoneSound = sound;
+  // Fall back to the bundled ringtone if the device URI can't be loaded
+  // (e.g. no default ringtone set) rather than ringing silently.
+  playFrom(DEVICE_DEFAULT_RINGTONE_URI, () => playFrom(fallbackRingtoneUrl()));
 }
 
 export function stopIncomingCallRingtone(): void {

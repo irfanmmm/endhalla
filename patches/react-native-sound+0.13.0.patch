@@ -16,10 +16,39 @@ index 1432387..bf96269 100644
    # Use install_modules_dependencies helper to install the dependencies if React Native version >=0.71.0.
    # See https://github.com/facebook/react-native/blob/febf6b7f33fdb4904669f99d795eba4c0f95d7bf/scripts/cocoapods/new_architecture.rb#L79.
 diff --git a/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/Sound.kt b/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/Sound.kt
-index 749ea14..ab0a1a8 100644
+index 749ea14..12f09d6 100644
 --- a/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/Sound.kt
 +++ b/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/Sound.kt
-@@ -202,7 +202,21 @@ open class Sound internal constructor(context:ReactApplicationContext):AudioMana
+@@ -6,6 +6,7 @@ import android.media.MediaPlayer
+ import android.media.MediaPlayer.OnCompletionListener
+ import android.media.MediaPlayer.OnErrorListener
+ import android.media.MediaPlayer.OnPreparedListener
++import android.net.Uri
+ 
+ import android.util.Log
+ import com.facebook.react.bridge.Arguments
+@@ -170,6 +171,20 @@ open class Sound internal constructor(context:ReactApplicationContext):AudioMana
+       return mediaPlayer
+     }
+ 
++    // Not handled anywhere before this patch: content:// URIs, e.g. the
++    // device's own default ringtone at content://settings/system/ringtone
++    // (same pattern the app's notification channel already uses for its
++    // own sound). MediaPlayer needs the Context+Uri overload for these,
++    // not the plain-string setDataSource used by the other branches here.
++    if (fileName.startsWith("content://")) {
++      try {
++        mediaPlayer.setDataSource(reactContext, Uri.parse(fileName))
++      } catch (e: Exception) {
++        return null
++      }
++      return mediaPlayer
++    }
++
+     val file = File(fileName)
+     if (file.exists()) {
+       mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC)
+@@ -202,7 +217,21 @@ open class Sound internal constructor(context:ReactApplicationContext):AudioMana
      if (!this.mixWithOthers) {
        val audioManager = reactContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
  
