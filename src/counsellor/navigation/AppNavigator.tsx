@@ -23,6 +23,19 @@ import { useUpdateCounsellorPushTokenMutation, useLazyGetCounsellorChatTokenQuer
 const Stack = createNativeStackNavigator();
 export const navigationRef = createNavigationContainerRef<any>();
 
+// A notification tap (especially one that cold-starts the app) can fire
+// before NavigationContainer finishes mounting — navigationRef.isReady()
+// is false for a moment, and previously that silently dropped the
+// navigation. Retry instead of giving up.
+function navigateWhenReady(routeName: string, params?: object, attempt = 0) {
+  if (navigationRef.isReady()) {
+    (navigationRef.navigate as (name: string, params?: object) => void)(routeName, params);
+    return;
+  }
+  if (attempt >= 20) return;
+  setTimeout(() => navigateWhenReady(routeName, params, attempt + 1), 500);
+}
+
 export default function AppNavigator() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const [updatePushToken] = useUpdateCounsellorPushTokenMutation();
@@ -33,11 +46,10 @@ export default function AppNavigator() {
     registerToken: (token) => updatePushToken(token).unwrap(),
     getChatToken: () => fetchChatToken().unwrap(),
     onNotificationTap: (data) => {
-      if (!navigationRef.isReady()) return;
       if (data.type === 'booking' || data.type === 'payment' || data.type === 'counsellor_review') {
-        navigationRef.navigate('CounsellorDashboard');
+        navigateWhenReady('CounsellorDashboard');
       } else if (data.type === 'chat') {
-        navigationRef.navigate('Messages');
+        navigateWhenReady('Messages');
       }
     },
   });
