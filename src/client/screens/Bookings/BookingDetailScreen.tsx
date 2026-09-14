@@ -53,10 +53,10 @@ export default function BookingDetailScreen({ route, navigation }: any) {
     } catch (err: any) {
       const reason = err?.data?.reason;
       const message =
-        reason === 'too_early'
-          ? 'This call has not opened yet. Try again closer to the scheduled time.'
+        reason === 'not_started'
+          ? "The counsellor hasn't started the call yet. Please wait."
           : reason === 'expired'
-          ? 'The window to join this call has passed.'
+          ? 'This call has already ended.'
           : err?.data?.message || 'Could not join the call. Please try again.';
       Alert.alert('Unable to join call', message);
     }
@@ -86,9 +86,10 @@ export default function BookingDetailScreen({ route, navigation }: any) {
 
           <View style={{ marginTop: px(24) }}>
             <JoinCallButton
-              scheduledAt={booking.scheduledAt}
               sessionType={booking.sessionType}
               status={booking.status}
+              callStatus={booking.callStatus}
+              role="client"
               loading={isJoining}
               onPress={handleJoinCall}
             />

@@ -1,5 +1,4 @@
 const { getStreamClient } = require('../config/stream');
-const { parseBookingDateTime, JOIN_WINDOW_BEFORE_MIN, JOIN_WINDOW_AFTER_MIN } = require('./dateTime');
 const Booking = require('../models/Booking');
 
 class CallTokenError extends Error {
@@ -15,26 +14,22 @@ class CallTokenError extends Error {
  * Video call token for the requester, and marks the call ongoing.
  * Throws CallTokenError (with .status/.reason) for any validation failure.
  * Caller is responsible for auth + ownership checks before calling this.
+ *
+ * The counsellor can start the call at any time relative to the scheduled
+ * slot. The client can only join once the counsellor has actually started
+ * it (booking.callStatus === 'ongoing') — this is not a time-of-day gate.
  */
-async function mintCallToken({ bookingId, requesterUserId, requesterName }) {
+async function mintCallToken({ bookingId, requesterUserId, requesterName, isCounsellor }) {
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new CallTokenError(404, 'Booking not found');
   if (booking.sessionType !== 'Video') throw new CallTokenError(400, 'This booking is not a video session');
   if (booking.status !== 'confirmed') throw new CallTokenError(400, 'This booking is not confirmed');
 
-  const scheduledAt = booking.scheduledAt || parseBookingDateTime(booking.dateText, booking.timeText);
-  if (!scheduledAt) {
-    throw new CallTokenError(400, 'Unable to determine the scheduled time for this booking');
+  if (booking.callStatus === 'ended') {
+    throw new CallTokenError(403, 'This call has ended', 'expired');
   }
-
-  const now = Date.now();
-  const opensAt = scheduledAt.getTime() - JOIN_WINDOW_BEFORE_MIN * 60 * 1000;
-  const closesAt = scheduledAt.getTime() + JOIN_WINDOW_AFTER_MIN * 60 * 1000;
-  if (now < opensAt) {
-    throw new CallTokenError(403, 'The call has not opened yet', 'too_early');
-  }
-  if (now > closesAt) {
-    throw new CallTokenError(403, 'The call window has expired', 'expired');
+  if (!isCounsellor && booking.callStatus === 'not_started') {
+    throw new CallTokenError(403, "The counsellor hasn't started the call yet", 'not_started');
   }
 
   const client = getStreamClient();
@@ -64,8 +59,6 @@ async function mintCallToken({ bookingId, requesterUserId, requesterName }) {
     callId,
     userId,
     userName: requesterName,
-    opensAt: new Date(opensAt),
-    closesAt: new Date(closesAt),
   };
 }
 

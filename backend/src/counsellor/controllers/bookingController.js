@@ -53,6 +53,7 @@ exports.getCallToken = async (req, res) => {
       bookingId: id,
       requesterUserId: req.counsellor.userId || req.counsellor._id,
       requesterName: req.counsellor.fullName || 'Counsellor',
+      isCounsellor: true,
     });
 
     return res.status(200).json({ success: true, ...result });

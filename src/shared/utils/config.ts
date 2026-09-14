@@ -42,7 +42,3 @@ export const getCounsellorBaseUrl = (): string => {
   const host = getApiHost();
   return `http://${host}:5001/api/counsellor`;
 };
-
-// Must match backend/src/utils/dateTime.js JOIN_WINDOW_BEFORE_MIN / JOIN_WINDOW_AFTER_MIN.
-export const CALL_JOIN_WINDOW_BEFORE_MIN = 10;
-export const CALL_JOIN_WINDOW_AFTER_MIN = 60;

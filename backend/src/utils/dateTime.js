@@ -27,6 +27,4 @@ function parseBookingDateTime(dateText, timeText) {
 
 module.exports = {
   parseBookingDateTime,
-  JOIN_WINDOW_BEFORE_MIN: 10,
-  JOIN_WINDOW_AFTER_MIN: 60,
 };
