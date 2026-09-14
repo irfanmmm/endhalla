@@ -16,6 +16,7 @@ async function notifyClientOfIncomingCall(booking, counsellorName) {
       title: 'Incoming video call',
       body: `${counsellorName || 'Your counsellor'} is calling you now.`,
       data: { type: 'incoming_call', bookingId: String(booking._id) },
+      androidChannelId: 'calls',
     });
   } catch (error) {
     console.error('Failed to notify client of incoming call:', error.message);
