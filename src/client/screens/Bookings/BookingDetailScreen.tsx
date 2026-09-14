@@ -20,6 +20,7 @@ export default function BookingDetailScreen({ route, navigation }: any) {
   // re-entering the screen (no live push forces a refetch on its own).
   const { data, isLoading } = useGetBookingByIdQuery(bookingId, {
     pollingInterval: 4000,
+    skipPollingIfUnfocused: true,
     refetchOnMountOrArgChange: true,
   });
   const [fetchCallToken, { isFetching: isJoining }] = useLazyGetCallTokenQuery();
