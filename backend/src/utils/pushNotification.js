@@ -14,6 +14,18 @@ async function sendPushNotification({ token, title, body, data }) {
       token,
       notification: { title, body },
       data: data ? stringifyData(data) : undefined,
+      // Default (normal) priority is throttled by Android Doze/App Standby and
+      // can arrive minutes late or not at all while the device is idle — every
+      // notification here is a time-sensitive, user-triggered alert (new
+      // booking, payment, incoming call), so always request immediate delivery.
+      android: {
+        priority: 'high',
+        notification: { sound: 'default', defaultVibrateTimings: true },
+      },
+      apns: {
+        headers: { 'apns-priority': '10' },
+        payload: { aps: { sound: 'default', contentAvailable: true } },
+      },
     });
   } catch (error) {
     console.error('Failed to send push notification:', error.message);
