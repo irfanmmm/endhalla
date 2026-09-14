@@ -14,7 +14,14 @@ import JoinCallButton from '../../../shared/videoCall/JoinCallButton';
 
 export default function BookingDetailScreen({ route, navigation }: any) {
   const { bookingId } = route.params;
-  const { data, isLoading } = useGetBookingByIdQuery(bookingId);
+  // Polls while this screen is open so callStatus catches up if the
+  // counsellor starts the call while the client is already sitting here —
+  // otherwise the Join Call button never appears without leaving and
+  // re-entering the screen (no live push forces a refetch on its own).
+  const { data, isLoading } = useGetBookingByIdQuery(bookingId, {
+    pollingInterval: 4000,
+    refetchOnMountOrArgChange: true,
+  });
   const [fetchCallToken, { isFetching: isJoining }] = useLazyGetCallTokenQuery();
   const [endCall] = useEndCallMutation();
   const [fetchChatChannel] = useLazyGetChatChannelQuery();
