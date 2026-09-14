@@ -33,7 +33,7 @@ export default function DashboardScreen({ navigation }: any) {
 
   const upcomingBookings = dashboardData?.upcomingBookings || [];
 
-  const handleJoinCall = async (bookingId: string) => {
+  const handleJoinCall = async (bookingId: string, clientName: string) => {
     setJoiningId(bookingId);
     try {
       const result = await fetchCallToken(bookingId).unwrap();
@@ -41,6 +41,8 @@ export default function DashboardScreen({ navigation }: any) {
         bookingId,
         callToken: result,
         onCallEnd: () => endCall(bookingId),
+        role: 'counsellor',
+        otherUserName: clientName,
       });
     } catch (err: any) {
       const reason = err?.data?.reason;
@@ -133,7 +135,7 @@ export default function DashboardScreen({ navigation }: any) {
                     callStatus={booking.callStatus}
                     role="counsellor"
                     loading={joiningId === booking._id}
-                    onPress={() => handleJoinCall(booking._id)}
+                    onPress={() => handleJoinCall(booking._id, booking.clientName)}
                   />
                 </View>
               )}

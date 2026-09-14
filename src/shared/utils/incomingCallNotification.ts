@@ -29,7 +29,7 @@ export async function displayIncomingCallNotification({ bookingId, callerName }:
       visibility: AndroidVisibility.PUBLIC,
       ongoing: true,
       autoCancel: true,
-      timeoutAfter: 45000,
+      timeoutAfter: 120000,
       fullScreenAction: { id: 'default' },
       pressAction: { id: 'default' },
       actions: [

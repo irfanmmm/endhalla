@@ -49,6 +49,8 @@ export default function BookingDetailScreen({ route, navigation }: any) {
         bookingId,
         callToken: result,
         onCallEnd: () => endCall(bookingId),
+        role: 'client',
+        otherUserName: booking.counsellorName,
       });
     } catch (err: any) {
       const reason = err?.data?.reason;
