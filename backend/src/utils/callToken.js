@@ -1,5 +1,26 @@
 const { getStreamClient } = require('../config/stream');
 const Booking = require('../models/Booking');
+const User = require('../models/User');
+const { sendPushNotification } = require('./pushNotification');
+
+async function notifyClientOfIncomingCall(booking, counsellorName) {
+  try {
+    let clientUser = booking.clientId ? await User.findById(booking.clientId) : null;
+    if (!clientUser && booking.clientPhone) {
+      clientUser = await User.findOne({ phone: booking.clientPhone });
+    }
+    if (!clientUser?.pushToken) return;
+
+    await sendPushNotification({
+      token: clientUser.pushToken,
+      title: 'Incoming video call',
+      body: `${counsellorName || 'Your counsellor'} is calling you now.`,
+      data: { type: 'incoming_call', bookingId: String(booking._id) },
+    });
+  } catch (error) {
+    console.error('Failed to notify client of incoming call:', error.message);
+  }
+}
 
 class CallTokenError extends Error {
   constructor(status, message, reason) {
@@ -51,6 +72,9 @@ async function mintCallToken({ bookingId, requesterUserId, requesterName, isCoun
     booking.callStatus = 'ongoing';
     booking.callStartedAt = new Date();
     await booking.save();
+    if (isCounsellor) {
+      notifyClientOfIncomingCall(booking, requesterName);
+    }
   }
 
   return {

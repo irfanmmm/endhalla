@@ -87,6 +87,16 @@ export function usePushNotifications({
     const unsubscribeForeground = onMessage(messagingInstance, async (remoteMessage) => {
       const title = remoteMessage.notification?.title || 'Endhalla';
       const body = remoteMessage.notification?.body || '';
+      const data = remoteMessage.data as Record<string, string> | undefined;
+
+      if (data?.type === 'incoming_call') {
+        Alert.alert(title, body, [
+          { text: 'Decline', style: 'cancel' },
+          { text: 'Answer', onPress: () => onNotificationTap?.(data) },
+        ]);
+        return;
+      }
+
       if (body) Alert.alert(title, body);
     });
 

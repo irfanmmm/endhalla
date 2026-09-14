@@ -42,7 +42,7 @@ export default function AppNavigator() {
     getChatToken: () => fetchChatToken().unwrap(),
     onNotificationTap: (data) => {
       if (!navigationRef.isReady()) return;
-      if (data.type === 'booking' || data.type === 'payment') {
+      if (data.type === 'booking' || data.type === 'payment' || data.type === 'incoming_call') {
         navigationRef.navigate('BookingDetail', { bookingId: data.bookingId });
       } else if (data.type === 'chat') {
         // Full chat-token context isn't in the push payload — route to the
